@@ -22,7 +22,7 @@
 	<modules>
 		<module>commons</module>
 		<module>gateway</module>
-		<module>identity-service</module>
+		<module>auth-service</module>
 		<module>deck-service</module>
 		<module>card-service</module>
 		<module>review-service</module>
