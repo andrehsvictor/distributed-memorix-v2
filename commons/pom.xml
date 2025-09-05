@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.github.andrehsvictor.memorix</groupId>
+		<artifactId>parent</artifactId>
+		<version>1.0.0</version>
+	</parent>
+	<artifactId>commons</artifactId>
+	<name>commons</name>
+	<version>1.0.0</version>
+	<url>https://github.com/andrehsvictor/distributed-memorix-v2</url>
+	<licenses>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/license/mit/</url>
+			<distribution>repo</distribution>
+			<comments>A short and simple permissive license with conditions only requiring preservation of copyright and license notices. Licensed works, modifications, and larger works may be distributed under different terms and without source code.</comments>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<id>andrehsvictor</id>
+			<name>Andre Henrique de Sousa Victor</name>
+			<email>andrehsvictor@gmail.com</email>
+			<timezone>America/Recife</timezone>
+			<url>https://github.com/andrehsvictor</url>
+			<roles>
+				<role>Author</role>
+				<role>Maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<scm>
+		<connection>scm:git:git://github.com/andrehsvictor/distributed-memorix-v2.git</connection>
+		<developerConnection>scm:git:ssh://github.com/andrehsvictor/distributed-memorix-v2.git</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/andrehsvictor/distributed-memorix-v2</url>
+	</scm>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

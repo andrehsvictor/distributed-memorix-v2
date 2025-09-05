@@ -12,6 +12,7 @@
 	<groupId>io.github.andrehsvictor.memorix</groupId>
 	<artifactId>parent</artifactId>
 	<name>parent</name>
+	<version>1.0.0</version>
 	<packaging>pom</packaging>
 	<properties>
 		<java.version>21</java.version>
@@ -19,6 +20,7 @@
 	</properties>
 
 	<modules>
+		<module>commons</module>
 		<module>gateway</module>
 		<module>identity-service</module>
 		<module>deck-service</module>
