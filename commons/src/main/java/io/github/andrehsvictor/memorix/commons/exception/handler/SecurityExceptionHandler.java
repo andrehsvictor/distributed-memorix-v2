@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import io.github.andrehsvictor.memorix.commons.dto.exception.ErrorDto;
 import io.github.andrehsvictor.memorix.commons.exception.ErrorCode;
-import io.github.andrehsvictor.memorix.commons.exception.dto.ErrorDto;
 import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 

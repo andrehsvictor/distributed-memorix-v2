@@ -22,9 +22,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import io.github.andrehsvictor.memorix.commons.dto.exception.ErrorDto;
+import io.github.andrehsvictor.memorix.commons.dto.exception.ValidationErrorDto;
 import io.github.andrehsvictor.memorix.commons.exception.ErrorCode;
-import io.github.andrehsvictor.memorix.commons.exception.dto.ErrorDto;
-import io.github.andrehsvictor.memorix.commons.exception.dto.ValidationErrorDto;
 import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 

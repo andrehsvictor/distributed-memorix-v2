@@ -1,4 +1,4 @@
-package io.github.andrehsvictor.memorix.commons.exception.dto;
+package io.github.andrehsvictor.memorix.commons.dto.exception;
 
 import java.util.ArrayList;
 import java.util.List;

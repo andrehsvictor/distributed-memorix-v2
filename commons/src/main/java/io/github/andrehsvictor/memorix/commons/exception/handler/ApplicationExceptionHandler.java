@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import io.github.andrehsvictor.memorix.commons.dto.exception.ErrorDto;
 import io.github.andrehsvictor.memorix.commons.exception.BadRequestException;
 import io.github.andrehsvictor.memorix.commons.exception.ErrorCode;
 import io.github.andrehsvictor.memorix.commons.exception.ForbiddenOperationException;
@@ -15,7 +16,6 @@ import io.github.andrehsvictor.memorix.commons.exception.GoneException;
 import io.github.andrehsvictor.memorix.commons.exception.ResourceConflictException;
 import io.github.andrehsvictor.memorix.commons.exception.ResourceNotFoundException;
 import io.github.andrehsvictor.memorix.commons.exception.UnauthorizedException;
-import io.github.andrehsvictor.memorix.commons.exception.dto.ErrorDto;
 import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 
