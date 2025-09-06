@@ -1,15 +1,14 @@
 package io.github.andrehsvictor.memorix.authservice.repository;
 
-import io.github.andrehsvictor.memorix.authservice.domain.Provider;
-import io.github.andrehsvictor.memorix.authservice.domain.ProviderName;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import io.github.andrehsvictor.memorix.authservice.domain.Provider;
+import io.github.andrehsvictor.memorix.authservice.domain.ProviderName;
+
 public interface ProviderRepository extends JpaRepository<Provider, UUID> {
 
     Optional<Provider> findByName(ProviderName name);

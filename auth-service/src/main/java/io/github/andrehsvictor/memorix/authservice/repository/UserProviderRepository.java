@@ -1,21 +1,20 @@
 package io.github.andrehsvictor.memorix.authservice.repository;
 
-import io.github.andrehsvictor.memorix.authservice.domain.Provider;
-import io.github.andrehsvictor.memorix.authservice.domain.ProviderName;
-import io.github.andrehsvictor.memorix.authservice.domain.User;
-import io.github.andrehsvictor.memorix.authservice.domain.UserProvider;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
+
+import io.github.andrehsvictor.memorix.authservice.domain.Provider;
+import io.github.andrehsvictor.memorix.authservice.domain.ProviderName;
+import io.github.andrehsvictor.memorix.authservice.domain.User;
+import io.github.andrehsvictor.memorix.authservice.domain.UserProvider;
+
 public interface UserProviderRepository extends JpaRepository<UserProvider, Object> {
 
     Optional<UserProvider> findByUserAndProvider(User user, Provider provider);
