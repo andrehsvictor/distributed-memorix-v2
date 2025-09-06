@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Memorix ###
+*-dev.yml
+application-dev.yml
+*.pem
+*.jks
+*.p12
+*.pub
+*.key
