@@ -7,7 +7,6 @@ INSERT INTO authority (name, description) VALUES
     ('profile', 'Access to user profile information'),
     ('email', 'Access to user email address'),
     ('openid', 'OpenID Connect authentication'),
-    ('offline_access', 'Access to refresh tokens'),
     ('deck.read', 'Read access to decks'),
     ('deck.write', 'Write access to decks'),
     ('deck.delete', 'Delete access to decks'),
