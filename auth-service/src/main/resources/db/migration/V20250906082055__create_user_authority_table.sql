@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS user_authority (
+    user_id UUID NOT NULL,
+    authority_id UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, authority_id),
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (authority_id) REFERENCES authority(id) ON DELETE CASCADE
+);
