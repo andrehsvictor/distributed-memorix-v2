@@ -1,0 +1,80 @@
+services:
+  decks-db:
+    image: postgres:alpine
+    container_name: memorix.decks-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: decks
+    ports:
+      - "5432:5432"
+    networks:
+      - memorix-network
+
+  cards-db:
+    image: mongo:latest
+    container_name: memorix.cards-db
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: cards
+    networks:
+      - memorix-network
+
+  gateway-cache:
+    image: redis:alpine
+    container_name: memorix.gateway-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - memorix-network
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: memorix.rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+      RABBITMQ_DEFAULT_VHOST: /
+    networks:
+      - memorix-network
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: memorix.zipkin
+    ports:
+      - "9411:9411"
+    environment:
+      STORAGE_TYPE: mem
+    networks:
+      - memorix-network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: memorix.prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - memorix-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: memorix.grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: grafana
+      GF_SECURITY_ADMIN_PASSWORD: grafana
+    depends_on:
+      - prometheus
+    networks:
+      - memorix-network
+
+networks:
+  memorix-network:
+    driver: bridge
