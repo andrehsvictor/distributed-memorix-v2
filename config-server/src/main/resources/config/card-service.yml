@@ -4,5 +4,5 @@ spring:
       uri: mongodb://mongo:mongo@localhost:27017/cards
       uuid-representation: standard
 
-  server:
-    port: 0
+server:
+  port: 0
