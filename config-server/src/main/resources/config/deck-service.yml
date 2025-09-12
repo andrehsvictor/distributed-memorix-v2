@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgres://localhost:5432/decks
+    username: postgres
+    password: postgres
