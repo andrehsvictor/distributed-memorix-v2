@@ -30,3 +30,15 @@ server:
 springdoc:
   swagger-ui:
     enabled: false
+
+messaging:
+  consumer:
+    card-deleted:
+      name: card.deleted
+      dlq: card.deleted.dlq
+      dlx: card.deleted.dlx
+  producer:
+    deck-deleted:
+      name: deck.deleted
+      dlq: deck.deleted.dlq
+      dlx: deck.deleted.dlx
