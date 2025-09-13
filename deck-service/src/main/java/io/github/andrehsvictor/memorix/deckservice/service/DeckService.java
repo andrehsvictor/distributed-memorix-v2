@@ -38,6 +38,16 @@ public class DeckService {
     }
 
     @Transactional
+    public void incrementCardsCount(UUID id) {
+        deckRepository.incrementCardsCount(id);
+    }
+
+    @Transactional
+    public void decrementCardsCount(UUID id) {
+        deckRepository.decrementCardsCount(id);
+    }
+
+    @Transactional
     public Deck create(PostDeckDto postDeckDto) {
         Deck deck = deckMapper.postDeckDtoToDeck(postDeckDto);
         return deckRepository.save(deck);
