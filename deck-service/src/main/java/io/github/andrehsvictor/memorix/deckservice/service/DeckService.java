@@ -5,15 +5,16 @@ import java.util.UUID;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import io.github.andrehsvictor.memorix.deckservice.dto.PostDeckDto;
 import io.github.andrehsvictor.memorix.deckservice.dto.PutDeckDto;
 import io.github.andrehsvictor.memorix.deckservice.mapper.DeckMapper;
 import io.github.andrehsvictor.memorix.deckservice.model.Deck;
 import io.github.andrehsvictor.memorix.deckservice.repository.DeckRepository;
-import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -33,7 +34,7 @@ public class DeckService {
 
     public Deck findById(UUID id) {
         return deckRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Deck not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deck not found with ID: " + id));
     }
 
     @Transactional
@@ -55,5 +56,5 @@ public class DeckService {
         deckRepository.delete(deck);
         rabbitTemplate.convertAndSend(DECK_EXCHANGE, DECK_DELETED_ROUTING_KEY, id.toString());
     }
-    
+
 }
