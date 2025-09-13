@@ -10,6 +10,18 @@ spring:
     username: rabbitmq
     password: rabbitmq
     virtual-host: /
+    queues:
+      - name: deck.deleted
+        durable: true
+        exchange: deck.ex
+        routing-key: deck.deleted
+        dlq:
+          name: deck.deleted.dlq
+          durable: true
+          exchange: deck.ex
+          routing-key: deck.deleted.dlq
+          ttl: 60000
+          max-length: 1000
 
 eureka:
   client:
