@@ -13,11 +13,29 @@ spring:
           uri: lb://deck-service
           predicates:
             - Path=/api/v2/decks/**
+
+        - id: deck-service.api-docs
+          uri: lb://deck-service
+          predicates:
+            - Path=/deck-service/v3/api-docs
           filters:
-            - name: RewritePath
-              args:
-                regexp: /api/v2/decks/(?<segment>.*)/cards(?<remaining>.*)
-                replacement: /api/v2/decks/${segment}/cards${remaining}
+            - RewritePath=/deck-service/v3/api-docs, /v3/api-docs
+
+        - id: card-service.api-docs
+          uri: lb://card-service
+          predicates:
+            - Path=/card-service/v3/api-docs
+          filters:
+            - RewritePath=/card-service/v3/api-docs, /v3/api-docs
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: Card API
+        url: /card-service/v3/api-docs
+      - name: Deck API
+        url: /deck-service/v3/api-docs
 
 server:
   port: 8080
