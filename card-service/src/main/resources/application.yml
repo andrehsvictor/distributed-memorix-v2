@@ -1,9 +1,9 @@
 spring:
   application:
-    name: deck-service
+    name: card-service
   cloud:
     config:
       uri: http://localhost:8888
-      name: deck-service
+      name: card-service
       profile: default
       label: main
