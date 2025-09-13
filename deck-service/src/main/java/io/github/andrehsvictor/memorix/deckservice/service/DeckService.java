@@ -28,13 +28,17 @@ public class DeckService {
     private static final String DECK_EXCHANGE = "ex.deck";
     private static final String DECK_DELETED_ROUTING_KEY = "deck.deleted";
 
-    public Page<Deck> findAll(Pageable pageable) {
+    public Page<Deck> getAll(Pageable pageable) {
         return deckRepository.findAll(pageable);
     }
 
-    public Deck findById(UUID id) {
+    public Deck getById(UUID id) {
         return deckRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deck not found with ID: " + id));
+    }
+
+    public boolean existsById(UUID id) {
+        return deckRepository.existsById(id);
     }
 
     @Transactional
@@ -45,16 +49,30 @@ public class DeckService {
 
     @Transactional
     public Deck update(UUID id, PutDeckDto putDeckDto) {
-        Deck deck = findById(id);
+        Deck deck = getById(id);
         deckMapper.updateDeckFromPutDeckDto(deck, putDeckDto);
         return deckRepository.save(deck);
     }
 
     @Transactional
     public void delete(UUID id) {
-        Deck deck = findById(id);
+        Deck deck = getById(id);
         deckRepository.delete(deck);
         rabbitTemplate.convertAndSend(DECK_EXCHANGE, DECK_DELETED_ROUTING_KEY, id.toString());
+    }
+
+    @Transactional
+    public void deleteAllByIdIn(Iterable<UUID> ids) {
+        Iterable<UUID> existingIds = deckRepository.findAllById(ids)
+                .stream()
+                .map(Deck::getId)
+                .toList();
+        if (existingIds.iterator().hasNext() == false) {
+            return;
+        }
+        deckRepository.deleteAllByIdInBatch(existingIds);
+        existingIds
+                .forEach(id -> rabbitTemplate.convertAndSend(DECK_EXCHANGE, DECK_DELETED_ROUTING_KEY, id.toString()));
     }
 
 }
