@@ -2,7 +2,6 @@ package io.github.andrehsvictor.memorix.deckservice.service;
 
 import java.util.UUID;
 
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -23,10 +22,7 @@ public class DeckService {
 
     private final DeckMapper deckMapper;
     private final DeckRepository deckRepository;
-    private final RabbitTemplate rabbitTemplate;
-
-    private static final String DECK_EXCHANGE = "ex.deck";
-    private static final String DECK_DELETED_ROUTING_KEY = "deck.deleted";
+    private final DeckEventPublisher deckEventPublisher;
 
     public Page<Deck> getAll(Pageable pageable) {
         return deckRepository.findAll(pageable);
@@ -58,7 +54,7 @@ public class DeckService {
     public void delete(UUID id) {
         Deck deck = getById(id);
         deckRepository.delete(deck);
-        rabbitTemplate.convertAndSend(DECK_EXCHANGE, DECK_DELETED_ROUTING_KEY, id.toString());
+        deckEventPublisher.publishDeckDeletedEvent(id.toString());
     }
 
     @Transactional
@@ -72,7 +68,7 @@ public class DeckService {
         }
         deckRepository.deleteAllByIdInBatch(existingIds);
         existingIds
-                .forEach(id -> rabbitTemplate.convertAndSend(DECK_EXCHANGE, DECK_DELETED_ROUTING_KEY, id.toString()));
+                .forEach(id -> deckEventPublisher.publishDeckDeletedEvent(id.toString()));
     }
 
 }
