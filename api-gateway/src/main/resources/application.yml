@@ -1,6 +1,23 @@
 spring:
   application:
     name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: card-service
+          uri: lb://card-service
+          predicates:
+            - Path=/api/v2/cards/**,/api/v2/decks/*/cards/**
+
+        - id: deck-service
+          uri: lb://deck-service
+          predicates:
+            - Path=/api/v2/decks/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /api/v2/decks/(?<segment>.*)/cards(?<remaining>.*)
+                replacement: /api/v2/decks/${segment}/cards${remaining}
 
 server:
   port: 8080
