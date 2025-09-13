@@ -1,6 +1,7 @@
 package io.github.andrehsvictor.memorix.deckservice.service;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
@@ -13,11 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DeckEventPublisher {
+public class DeckEventProducer {
 
     private final RabbitTemplate rabbitTemplate;
 
-    private static final String DECK_DELETED_QUEUE = "deck.deleted";
+    @Value("${messaging.producer.deck-deleted}")
+    private String deckDeletedQueue;
 
     @Async
     @Retryable(maxAttempts = 3, retryFor = Exception.class, backoff = @Backoff(delay = 1000))
@@ -27,7 +29,7 @@ public class DeckEventPublisher {
                 .timestamp(System.currentTimeMillis())
                 .build();
         try {
-            rabbitTemplate.convertAndSend(DECK_DELETED_QUEUE, event);
+            rabbitTemplate.convertAndSend(deckDeletedQueue, event);
             log.info("Published DeckDeletedEvent for deck with ID: {}", deckId);
         } catch (Exception e) {
             throw e;

@@ -22,7 +22,7 @@ public class DeckService {
 
     private final DeckMapper deckMapper;
     private final DeckRepository deckRepository;
-    private final DeckEventPublisher deckEventPublisher;
+    private final DeckEventProducer deckEventPublisher;
 
     public Page<Deck> getAll(Pageable pageable) {
         return deckRepository.findAll(pageable);

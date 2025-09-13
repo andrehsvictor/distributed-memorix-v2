@@ -24,7 +24,7 @@ public class CardService {
     private final DeckService deckService;
     private final CardMapper cardMapper;
     private final CardRepository cardRepository;
-    private final CardEventPublisher cardEventPublisher;
+    private final CardEventProducer cardEventPublisher;
 
     public CardWithDeckDto getById(UUID id) {
         return cardRepository.findById(id)
