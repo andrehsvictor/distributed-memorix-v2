@@ -17,7 +17,7 @@ public class CardEventConsumer {
 
     private final CardRepository cardRepository;
 
-    @RabbitListener(queues = { "${spring.rabbitmq.queues[0].name}" })
+    @RabbitListener(queues = { "deck.deleted" })
     public void handleDeckDeletedEvent(DeckDeletedEvent event) {
         long count = cardRepository.deleteAllByDeckId(UUID.fromString(event.getDeckId()));
         log.info("Deleted {} cards associated with deck ID {}", count, event.getDeckId());

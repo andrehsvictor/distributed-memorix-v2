@@ -17,13 +17,13 @@ public class DeckEventConsumer {
 
     private final DeckService deckService;
 
-    @RabbitListener(queues = { "${messaging.consumer.card-created}" })
+    @RabbitListener(queues = { "card.created" })
     public void handleCardCreatedEvent(CardCreatedEvent event) {
         deckService.incrementCardsCount(UUID.fromString(event.getDeckId()));
         log.info("Handled CardCreatedEvent for deck with ID: {}", event.getDeckId());
     }
 
-    @RabbitListener(queues = { "${messaging.consumer.card-deleted}" })
+    @RabbitListener(queues = { "card.deleted" })
     public void handleCardDeletedEvent(CardDeletedEvent event) {
         deckService.decrementCardsCount(UUID.fromString(event.getDeckId()));
         log.info("Handled CardDeletedEvent for deck with ID: {}", event.getDeckId());
