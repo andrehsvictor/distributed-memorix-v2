@@ -1,0 +1,119 @@
+{
+    "queues": [
+        {
+            "name": "deck.deleted",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-dead-letter-exchange": "dlx.ex",
+                "x-dead-letter-routing-key": "deck.deleted.dlq"
+            }
+        },
+        {
+            "name": "deck.deleted.dlq",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-message-ttl": 300000
+            }
+        },
+        {
+            "name": "card.created",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-dead-letter-exchange": "dlx.ex",
+                "x-dead-letter-routing-key": "card.created.dlq"
+            }
+        },
+        {
+            "name": "card.created.dlq",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-message-ttl": 300000
+            }
+        },
+        {
+            "name": "card.deleted",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-dead-letter-exchange": "dlx.ex",
+                "x-dead-letter-routing-key": "card.deleted.dlq"
+            }
+        },
+        {
+            "name": "card.deleted.dlq",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-message-ttl": 300000
+            }
+        }
+    ],
+    "exchanges": [
+        {
+            "name": "deck.ex",
+            "type": "direct",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "card.ex",
+            "type": "direct",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "dlx.ex",
+            "type": "direct",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        }
+    ],
+    "bindings": [
+        {
+            "source": "deck.ex",
+            "destination": "deck.deleted",
+            "destination_type": "queue",
+            "routing_key": "deck.deleted"
+        },
+        {
+            "source": "card.ex",
+            "destination": "card.created",
+            "destination_type": "queue",
+            "routing_key": "card.created"
+        },
+        {
+            "source": "card.ex",
+            "destination": "card.deleted",
+            "destination_type": "queue",
+            "routing_key": "card.deleted"
+        },
+        {
+            "source": "dlx.ex",
+            "destination": "deck.deleted.dlq",
+            "destination_type": "queue",
+            "routing_key": "deck.deleted.dlq"
+        },
+        {
+            "source": "dlx.ex",
+            "destination": "card.created.dlq",
+            "destination_type": "queue",
+            "routing_key": "card.created.dlq"
+        },
+        {
+            "source": "dlx.ex",
+            "destination": "card.deleted.dlq",
+            "destination_type": "queue",
+            "routing_key": "card.deleted.dlq"
+        }
+    ]
+}

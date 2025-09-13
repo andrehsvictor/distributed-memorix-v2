@@ -13,29 +13,6 @@ spring:
     username: rabbitmq
     password: rabbitmq
     virtual-host: /
-    queues:
-      - name: card.deleted
-        durable: true
-        exchange: card.ex
-        routing-key: card.deleted
-        dlq:
-          name: card.deleted.dlq
-          durable: true
-          exchange: card.ex
-          routing-key: card.deleted.dlq
-          ttl: 60000
-          max-length: 1000
-      - name: card.created
-        durable: true
-        exchange: card.ex
-        routing-key: card.created
-        dlq:
-          name: card.created.dlq
-          durable: true
-          exchange: card.ex
-          routing-key: card.created.dlq
-          ttl: 60000
-          max-length: 1000
 
 eureka:
   client:
