@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import io.github.andrehsvictor.memorix.cardservice.event.CardCreatedEvent;
 import io.github.andrehsvictor.memorix.cardservice.event.CardDeletedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CardEventPublisher {
@@ -26,6 +28,7 @@ public class CardEventPublisher {
                 .build();
         try {
             rabbitTemplate.convertAndSend("card.deleted", event);
+            log.info("Published CardDeletedEvent for card with ID {}", cardId);
         } catch (Exception e) {
             throw e;
         }
@@ -41,6 +44,7 @@ public class CardEventPublisher {
                 .build();
         try {
             rabbitTemplate.convertAndSend("card.created", event);
+            log.info("Published CardCreatedEvent for card with ID {}", cardId);
         } catch (Exception e) {
             throw e;
         }

@@ -12,4 +12,6 @@ public interface CardRepository extends MongoRepository<Card, UUID> {
 
     Page<Card> findAllByDeckId(UUID deckId, Pageable pageable);
 
+    long deleteAllByDeckId(UUID deckId);
+
 }
