@@ -34,3 +34,7 @@ server:
 springdoc:
   swagger-ui:
     enabled: false
+  api-docs:
+    title: Card API
+    description: Card Service API documentation
+    url: http://localhost:8080
