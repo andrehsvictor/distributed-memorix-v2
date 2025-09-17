@@ -24,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { deckService } from '../services/api';
-import type { Deck, PostDeckDto, Page } from '../types/api';
+import type { Deck, PostDeckDto, PutDeckDto, Page } from '../types/api';
 import DeckCard from '../components/DeckCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -39,6 +39,7 @@ const DecksPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [snackbar, setSnackbar] = useState<{
@@ -49,6 +50,14 @@ const DecksPage: React.FC = () => {
 
   // Form state for new deck
   const [newDeck, setNewDeck] = useState<PostDeckDto>({
+    name: '',
+    description: '',
+    coverImageUrl: '',
+    hexColor: '#1976d2',
+  });
+
+  // Form state for editing deck
+  const [editDeck, setEditDeck] = useState<PutDeckDto>({
     name: '',
     description: '',
     coverImageUrl: '',
@@ -132,6 +141,48 @@ const DecksPage: React.FC = () => {
         severity: 'error',
       });
     }
+  };
+
+  // Handle deck editing
+  const handleEditDeck = async () => {
+    if (!selectedDeck) return;
+    
+    try {
+      await deckService.update(selectedDeck.id, editDeck);
+      setEditDialogOpen(false);
+      setSelectedDeck(null);
+      setEditDeck({
+        name: '',
+        description: '',
+        coverImageUrl: '',
+        hexColor: '#1976d2',
+      });
+      setSnackbar({
+        open: true,
+        message: 'Deck updated successfully!',
+        severity: 'success',
+      });
+      loadDecks(currentPage); // Reload current page
+    } catch (err) {
+      console.error('Error updating deck:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update deck. Please try again.',
+        severity: 'error',
+      });
+    }
+  };
+
+  // Open edit dialog with deck data
+  const openEditDialog = (deck: Deck) => {
+    setSelectedDeck(deck);
+    setEditDeck({
+      name: deck.name,
+      description: deck.description || '',
+      coverImageUrl: deck.coverImageUrl || '',
+      hexColor: deck.hexColor,
+    });
+    setEditDialogOpen(true);
   };
 
   // Handle deck deletion
@@ -298,7 +349,7 @@ const DecksPage: React.FC = () => {
                 key={deck.id}
                 deck={deck}
                 onView={(deck) => navigate(`/decks/${deck.id}/cards`)}
-                onEdit={(deck) => navigate(`/decks/${deck.id}/edit`)}
+                onEdit={(deck) => openEditDialog(deck)}
                 onDelete={(deck) => {
                   setSelectedDeck(deck);
                   setDeleteDialogOpen(true);
@@ -428,6 +479,80 @@ const DecksPage: React.FC = () => {
             disabled={!newDeck.name.trim()}
           >
             Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Deck Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={false}
+        sx={{
+          '& .MuiDialog-paper': {
+            m: { xs: 1, sm: 2 },
+            maxHeight: { xs: '90vh', sm: 'none' },
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>Edit Deck</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Deck Name"
+            fullWidth
+            variant="outlined"
+            value={editDeck.name}
+            onChange={(e) => setEditDeck({ ...editDeck, name: e.target.value })}
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={3}
+            value={editDeck.description}
+            onChange={(e) => setEditDeck({ ...editDeck, description: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Cover Image URL"
+            fullWidth
+            variant="outlined"
+            value={editDeck.coverImageUrl}
+            onChange={(e) => setEditDeck({ ...editDeck, coverImageUrl: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              margin="dense"
+              label="Color"
+              type="color"
+              variant="outlined"
+              value={editDeck.hexColor}
+              onChange={(e) => setEditDeck({ ...editDeck, hexColor: e.target.value })}
+              sx={{ width: { xs: '100%', sm: 120 } }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              {editDeck.hexColor}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleEditDeck}
+            variant="contained"
+            disabled={!editDeck.name.trim()}
+          >
+            Update
           </Button>
         </DialogActions>
       </Dialog>
