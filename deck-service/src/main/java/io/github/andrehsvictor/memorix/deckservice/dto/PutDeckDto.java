@@ -17,7 +17,7 @@ public class PutDeckDto {
     @Size(max = 255, message = "Description cannot be longer than 255 characters")
     private String description;
 
-    @Pattern(message = "coverImageUrl must be a valid URL", regexp = "^(https?|ftp)://[^\\s/$.?#].[^\\s]*$")
+    @Pattern(message = "coverImageUrl must be a valid URL", regexp = "^$|^(https?|ftp)://[^\\s/$.?#].[^\\s]*$")
     private String coverImageUrl;
 
     @NotEmpty(message = "hexColor cannot be empty")
