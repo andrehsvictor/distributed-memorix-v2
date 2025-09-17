@@ -23,13 +23,13 @@ services:
     networks:
       - memorix-network
 
-  gateway-cache:
-    image: redis:alpine
-    container_name: memorix.gateway-cache
-    ports:
-      - "6379:6379"
-    networks:
-      - memorix-network
+  # gateway-cache:
+  #   image: redis:alpine
+  #   container_name: memorix.gateway-cache
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - memorix-network
 
   rabbitmq:
     image: rabbitmq:management-alpine
@@ -37,13 +37,9 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    volumes:
-      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     environment:
       RABBITMQ_DEFAULT_USER: rabbitmq
       RABBITMQ_DEFAULT_PASS: rabbitmq
-      RABBITMQ_DEFAULT_VHOST: /
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_management load_definitions \"/etc/rabbitmq/definitions.json\""
     networks:
       - memorix-network
 
@@ -60,6 +56,8 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: memorix.prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
