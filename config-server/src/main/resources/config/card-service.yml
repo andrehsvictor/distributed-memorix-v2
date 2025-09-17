@@ -1,7 +1,7 @@
 spring:
   data:
     mongodb:
-      uri: mongodb://mongo:mongo@localhost:27017/cards
+      uri: mongodb://mongo:mongo@localhost:27017/cards?authSource=admin
       uuid-representation: standard
   
   rabbitmq:
