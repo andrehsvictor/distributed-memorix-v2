@@ -17,7 +17,7 @@ public class PostDeckDto {
     @Size(max = 255, message = "Description cannot be longer than 255 characters")
     private String description;
 
-    @Pattern(message = "coverImageUrl must be a valid URL", regexp = "^(https?|ftp)://[^\\s/$.?#].[^\\s]*$")
+    @Pattern(message = "coverImageUrl must be a valid URL", regexp = "^$|^(https?|ftp)://[^\\s/$.?#].[^\\s]*$")
     private String coverImageUrl;
 
     @Size(min = 7, max = 7, message = "hexColor must be 7 characters long")
