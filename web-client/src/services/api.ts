@@ -9,6 +9,7 @@ import type {
   PutCardDto, 
   Page 
 } from '../types/api';
+import { handleApiError } from '../utils/errorHandler';
 
 const API_BASE_URL = 'http://localhost:8080/api/v2';
 
@@ -40,18 +41,26 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
-    console.error('Full error object:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response headers:', error.response.headers);
-    }
+    const errorResult = handleApiError(error);
+    
+    // Log detailed error information for debugging
+    console.error('API Error Details:', {
+      status: error.response?.status,
+      message: errorResult.message,
+      isRetryable: errorResult.isRetryable,
+      shouldRedirect: errorResult.shouldRedirect,
+      originalError: error
+    });
+    
+    // Attach processed error information to the error object
+    error.processedError = errorResult;
+    
     return Promise.reject(error);
   }
 );
 
 export const deckService = {
-  // Test connectivity
+  // Test connectivity with enhanced error handling
   testConnection: async (): Promise<boolean> => {
     try {
       console.log('Testing connection to:', API_BASE_URL);
@@ -60,17 +69,13 @@ export const deckService = {
       return true;
     } catch (error) {
       console.error('Connection test failed:', error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-        if ('response' in error) {
-          const axiosError = error as { response?: { status?: number; data?: unknown } };
-          console.error('Response status:', axiosError.response?.status);
-          console.error('Response data:', axiosError.response?.data);
-        }
-        if ('code' in error) {
-          console.error('Error code:', (error as { code?: string }).code);
-        }
-      }
+      
+      // Use the centralized error handler for logging
+      const errorResult = handleApiError(error);
+      console.error('Processed error:', errorResult);
+      
+      // For connectivity test, we always return false on any error
+      // but the error details are logged for debugging
       return false;
     }
   },

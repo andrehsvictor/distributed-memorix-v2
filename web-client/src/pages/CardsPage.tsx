@@ -29,10 +29,17 @@ import { deckService, cardService } from '../services/api';
 import type { Deck, Card, PostCardDto, PutCardDto, Page } from '../types/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useErrorHandler } from '../hooks/useErrorHandler';
 
 const CardsPage: React.FC = () => {
   const navigate = useNavigate();
   const { deckId } = useParams<{ deckId: string }>();
+  const { handleError } = useErrorHandler({
+    onRetryableError: () => {
+      // Automatically retry loading data after a short delay for 503 errors
+      setTimeout(() => loadDeckAndCards(), 3000);
+    }
+  });
   
   // State
   const [deck, setDeck] = useState<Deck | null>(null);
@@ -83,6 +90,7 @@ const CardsPage: React.FC = () => {
       setCards(cardsData);
     } catch (err) {
       console.error('Error loading deck and cards:', err);
+      handleError(err, 'load deck and cards');
       setError('Failed to load deck and cards. Please try again.');
     } finally {
       setLoading(false);

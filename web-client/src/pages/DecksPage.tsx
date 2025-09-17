@@ -24,13 +24,21 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { deckService } from '../services/api';
+import api from '../services/api';
 import type { Deck, PostDeckDto, PutDeckDto, Page } from '../types/api';
 import DeckCard from '../components/DeckCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useErrorHandler } from '../hooks/useErrorHandler';
 
 const DecksPage: React.FC = () => {
   const navigate = useNavigate();
+  const { handleError } = useErrorHandler({
+    onRetryableError: () => {
+      // Automatically retry loading decks after a short delay for 503 errors
+      setTimeout(() => loadDecks(currentPage), 3000);
+    }
+  });
   
   // State
   const [decks, setDecks] = useState<Page<Deck> | null>(null);
@@ -77,12 +85,7 @@ const DecksPage: React.FC = () => {
       setDecks(data);
     } catch (err) {
       console.error('Error loading decks:', err);
-      console.error('Error details:', err instanceof Error ? err.message : String(err));
-      if (err instanceof Error && 'response' in err) {
-        const axiosError = err as { response?: { data?: unknown; status?: number } };
-        console.error('Response data:', axiosError.response?.data);
-        console.error('Response status:', axiosError.response?.status);
-      }
+      handleError(err, 'load decks');
       setError('Failed to load decks. Please try again.');
     } finally {
       setLoading(false);
@@ -109,7 +112,7 @@ const DecksPage: React.FC = () => {
     };
     
     initializeApp();
-  }, [currentPage]);
+  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle page change
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
@@ -135,6 +138,7 @@ const DecksPage: React.FC = () => {
       loadDecks(currentPage); // Reload current page
     } catch (err) {
       console.error('Error creating deck:', err);
+      handleError(err, 'create deck');
       setSnackbar({
         open: true,
         message: 'Failed to create deck. Please try again.',
@@ -165,6 +169,7 @@ const DecksPage: React.FC = () => {
       loadDecks(currentPage); // Reload current page
     } catch (err) {
       console.error('Error updating deck:', err);
+      handleError(err, 'update deck');
       setSnackbar({
         open: true,
         message: 'Failed to update deck. Please try again.',
@@ -201,6 +206,7 @@ const DecksPage: React.FC = () => {
       loadDecks(currentPage); // Reload current page
     } catch (err) {
       console.error('Error deleting deck:', err);
+      handleError(err, 'delete deck');
       setSnackbar({
         open: true,
         message: 'Failed to delete deck. Please try again.',
@@ -303,6 +309,32 @@ const DecksPage: React.FC = () => {
         >
           Refresh
         </Button>
+        
+        {/* Debug: Test 503 Error - remove in production */}
+        {import.meta.env.DEV && (
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={async () => {
+              try {
+                // Simulate a 503 error by calling a non-existent endpoint
+                await api.get('/test-503');
+              } catch (err) {
+                handleError(err, 'test 503 error');
+                setSnackbar({
+                  open: true,
+                  message: 'Service unavailable error test triggered',
+                  severity: 'error',
+                });
+              }
+            }}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 'auto' } 
+            }}
+          >
+            Test 503
+          </Button>
+        )}
       </Box>
 
       {/* Debug Info - remove in production */}
