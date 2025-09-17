@@ -121,16 +121,32 @@ const DeckCard: React.FC<DeckCardProps> = ({
         </Typography>
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+      <CardActions sx={{ 
+        justifyContent: 'space-between', 
+        px: 2, 
+        pb: 2,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 1, sm: 0 },
+      }}>
         <Button
           size="small"
           startIcon={<Visibility />}
           onClick={() => onView?.(deck)}
+          fullWidth={false}
+          sx={{ 
+            order: { xs: 2, sm: 1 },
+            minWidth: { xs: '100%', sm: 'auto' },
+          }}
         >
           View Cards
         </Button>
         
-        <Box>
+        <Box sx={{ 
+          order: { xs: 1, sm: 2 },
+          display: 'flex',
+          justifyContent: { xs: 'center', sm: 'flex-end' },
+          width: { xs: '100%', sm: 'auto' },
+        }}>
           <Tooltip title="Edit deck">
             <IconButton
               size="small"

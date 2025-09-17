@@ -23,7 +23,8 @@ const api = axios.create({
 // Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+    console.log(`Making ${config.method?.toUpperCase()} request to ${config.baseURL}${config.url}`);
+    console.log('Request config:', config);
     return config;
   },
   (error) => {
@@ -34,17 +35,62 @@ api.interceptors.request.use(
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`Response from ${response.config.url}:`, response.status, response.data);
+    return response;
+  },
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
+    console.error('Full error object:', error);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    }
     return Promise.reject(error);
   }
 );
 
 export const deckService = {
+  // Test connectivity
+  testConnection: async (): Promise<boolean> => {
+    try {
+      console.log('Testing connection to:', API_BASE_URL);
+      const response = await api.get('/decks?page=0&size=1');
+      console.log('Connection test successful:', response.status);
+      return true;
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        if ('response' in error) {
+          const axiosError = error as { response?: { status?: number; data?: unknown } };
+          console.error('Response status:', axiosError.response?.status);
+          console.error('Response data:', axiosError.response?.data);
+        }
+        if ('code' in error) {
+          console.error('Error code:', (error as { code?: string }).code);
+        }
+      }
+      return false;
+    }
+  },
+
   // Get all decks with pagination
-  getAll: (page = 0, size = 10): Promise<Page<Deck>> =>
-    api.get(`/decks?page=${page}&size=${size}`).then(res => res.data),
+  getAll: (page = 0, size = 10): Promise<Page<Deck>> => {
+    console.log(`Getting decks: page=${page}, size=${size}`);
+    const url = `/decks?page=${page}&size=${size}`;
+    console.log('Full URL:', `${API_BASE_URL}${url}`);
+    return api.get(url).then(res => {
+      console.log('Deck service response:', res.data);
+      console.log('Response type:', typeof res.data);
+      console.log('Has content property:', 'content' in res.data);
+      console.log('Content is array:', Array.isArray(res.data.content));
+      return res.data;
+    }).catch(error => {
+      console.error('Error in deckService.getAll:', error);
+      throw error;
+    });
+  },
 
   // Get deck by ID
   getById: (id: string): Promise<Deck> =>

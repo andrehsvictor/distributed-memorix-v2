@@ -6,6 +6,8 @@ import {
   Box,
   IconButton,
   Button,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Menu as MenuIcon, Home, Style } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -17,45 +19,55 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <AppBar position="static" elevation={1}>
-      <Toolbar>
-        <IconButton
-          edge="start"
-          color="inherit"
-          aria-label="menu"
-          onClick={onMenuClick}
-          sx={{ mr: 2 }}
-        >
-          <MenuIcon />
-        </IconButton>
+      <Toolbar sx={{ px: { xs: 1, sm: 2 } }}>
+        {isMobile && (
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={onMenuClick}
+            sx={{ mr: 1 }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
         
         <Typography
-          variant="h6"
+          variant={isMobile ? "h6" : "h5"}
           component="div"
-          sx={{ flexGrow: 1, cursor: 'pointer' }}
+          sx={{ 
+            flexGrow: 1, 
+            cursor: 'pointer',
+            fontWeight: 'bold',
+          }}
           onClick={() => navigate('/')}
         >
           Memorix
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
           <Button
             color="inherit"
-            startIcon={<Home />}
+            startIcon={!isMobile ? <Home /> : undefined}
             onClick={() => navigate('/')}
             variant={location.pathname === '/' ? 'outlined' : 'text'}
+            size={isMobile ? 'small' : 'medium'}
           >
-            Decks
+            {isMobile ? <Home /> : 'Decks'}
           </Button>
           <Button
             color="inherit"
-            startIcon={<Style />}
+            startIcon={!isMobile ? <Style /> : undefined}
             onClick={() => navigate('/cards')}
             variant={location.pathname === '/cards' ? 'outlined' : 'text'}
+            size={isMobile ? 'small' : 'medium'}
           >
-            All Cards
+            {isMobile ? <Style /> : 'Cards'}
           </Button>
         </Box>
       </Toolbar>

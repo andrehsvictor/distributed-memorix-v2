@@ -60,19 +60,46 @@ const DecksPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Loading decks - page:', page);
       const data = await deckService.getAll(page - 1, 12); // 0-based pagination
+      console.log('API Response:', data);
+      console.log('Decks content:', data?.content);
+      console.log('Total elements:', data?.totalElements);
       setDecks(data);
     } catch (err) {
       console.error('Error loading decks:', err);
+      console.error('Error details:', err instanceof Error ? err.message : String(err));
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: unknown; status?: number } };
+        console.error('Response data:', axiosError.response?.data);
+        console.error('Response status:', axiosError.response?.status);
+      }
       setError('Failed to load decks. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial load
+  // Initial load and connectivity test
   useEffect(() => {
-    loadDecks(currentPage);
+    const initializeApp = async () => {
+      console.log('Initializing app...');
+      
+      // Test connectivity first
+      const isConnected = await deckService.testConnection();
+      console.log('API connectivity test:', isConnected);
+      
+      if (!isConnected) {
+        setError('Unable to connect to API. Please check if the server is running on http://localhost:8080');
+        setLoading(false);
+        return;
+      }
+      
+      // Load decks
+      loadDecks(currentPage);
+    };
+    
+    initializeApp();
   }, [currentPage]);
 
   // Handle page change
@@ -132,10 +159,25 @@ const DecksPage: React.FC = () => {
   };
 
   // Filter decks based on search query
-  const filteredDecks = decks?.content.filter(deck =>
-    deck.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    deck.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredDecks = React.useMemo(() => {
+    if (!decks?.content) {
+      console.log('No decks content available');
+      return [];
+    }
+    
+    if (!searchQuery.trim()) {
+      console.log('No search query, returning all decks:', decks.content.length);
+      return decks.content;
+    }
+    
+    const filtered = decks.content.filter(deck =>
+      deck.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      deck.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    console.log('Filtered decks:', filtered.length, 'from', decks.content.length);
+    return filtered;
+  }, [decks?.content, searchQuery]);
 
   if (loading) {
     return <LoadingSpinner message="Loading decks..." />;
@@ -148,8 +190,17 @@ const DecksPage: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1">
+      <Box sx={{ 
+        mb: 3, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: { xs: 2, sm: 0 },
+      }}>
+        <Typography variant="h4" component="h1" sx={{ 
+          fontSize: { xs: '1.75rem', sm: '2.125rem' } 
+        }}>
           My Decks
         </Typography>
         <Button
@@ -157,14 +208,27 @@ const DecksPage: React.FC = () => {
           startIcon={<Add />}
           onClick={() => setCreateDialogOpen(true)}
           size="large"
+          sx={{ 
+            minWidth: { xs: '100%', sm: 'auto' },
+            alignSelf: { xs: 'stretch', sm: 'auto' }
+          }}
         >
           Create Deck
         </Button>
       </Box>
 
       {/* Search and Actions */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-        <FormControl variant="outlined" sx={{ flexGrow: 1, maxWidth: 400 }}>
+      <Box sx={{ 
+        mb: 3, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: 2, 
+        alignItems: { xs: 'stretch', sm: 'center' } 
+      }}>
+        <FormControl variant="outlined" sx={{ 
+          flexGrow: 1, 
+          maxWidth: { xs: '100%', sm: 400 } 
+        }}>
           <InputLabel htmlFor="search-decks">Search decks</InputLabel>
           <OutlinedInput
             id="search-decks"
@@ -182,10 +246,28 @@ const DecksPage: React.FC = () => {
           variant="outlined"
           startIcon={<Refresh />}
           onClick={() => loadDecks(currentPage)}
+          sx={{ 
+            minWidth: { xs: '100%', sm: 'auto' } 
+          }}
         >
           Refresh
         </Button>
       </Box>
+
+      {/* Debug Info - remove in production */}
+      {import.meta.env.DEV && (
+        <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Typography variant="body2">
+            <strong>Debug Info:</strong><br />
+            Loading: {loading.toString()}<br />
+            Error: {error || 'none'}<br />
+            Decks object: {decks ? 'exists' : 'null'}<br />
+            Content length: {decks?.content?.length || 0}<br />
+            Filtered length: {filteredDecks.length}<br />
+            Search query: "{searchQuery}"
+          </Typography>
+        </Box>
+      )}
 
       {/* Stats */}
       {decks && (
@@ -205,8 +287,10 @@ const DecksPage: React.FC = () => {
                 sm: 'repeat(2, 1fr)',
                 md: 'repeat(3, 1fr)',
                 lg: 'repeat(4, 1fr)',
+                xl: 'repeat(auto-fill, minmax(300px, 1fr))',
               },
-              gap: 3,
+              gap: { xs: 2, sm: 3 },
+              mb: 4,
             }}
           >
             {filteredDecks.map((deck) => (
@@ -259,14 +343,15 @@ const DecksPage: React.FC = () => {
         </Box>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - apenas em mobile */}
       <Fab
         color="primary"
         aria-label="add deck"
         sx={{
           position: 'fixed',
-          bottom: 16,
-          right: 16,
+          bottom: { xs: 16, sm: 24 },
+          right: { xs: 16, sm: 24 },
+          display: { xs: 'flex', sm: 'none' }, // Só mostra em mobile
         }}
         onClick={() => setCreateDialogOpen(true)}
       >
@@ -279,8 +364,15 @@ const DecksPage: React.FC = () => {
         onClose={() => setCreateDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={false} // Removido fullScreen para mobile
+        sx={{
+          '& .MuiDialog-paper': {
+            m: { xs: 1, sm: 2 },
+            maxHeight: { xs: '90vh', sm: 'none' },
+          }
+        }}
       >
-        <DialogTitle>Create New Deck</DialogTitle>
+        <DialogTitle sx={{ pb: 1 }}>Create New Deck</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <TextField
             autoFocus
@@ -313,17 +405,22 @@ const DecksPage: React.FC = () => {
             onChange={(e) => setNewDeck({ ...newDeck, coverImageUrl: e.target.value })}
             sx={{ mb: 2 }}
           />
-          <TextField
-            margin="dense"
-            label="Color"
-            type="color"
-            variant="outlined"
-            value={newDeck.hexColor}
-            onChange={(e) => setNewDeck({ ...newDeck, hexColor: e.target.value })}
-            sx={{ width: 120 }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              margin="dense"
+              label="Color"
+              type="color"
+              variant="outlined"
+              value={newDeck.hexColor}
+              onChange={(e) => setNewDeck({ ...newDeck, hexColor: e.target.value })}
+              sx={{ width: { xs: '100%', sm: 120 } }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              {newDeck.hexColor}
+            </Typography>
+          </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
           <Button
             onClick={handleCreateDeck}
