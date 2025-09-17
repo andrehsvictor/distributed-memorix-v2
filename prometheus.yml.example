@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'eureka-services'
+
+    eureka_sd_configs:
+      - server: 'http://host.docker.internal:8761/eureka' # Or use ip address of your host machine
+
+    relabel_configs:
+      - source_labels: [__meta_eureka_app_instance_metadata_prometheus_path]
+        target_label: __metrics_path__
+        regex: (.+)
+
+      - source_labels: [__meta_eureka_app_name]
+        target_label: job
+
+      - source_labels: [__meta_eureka_app_instance_id]
+        target_label: instance
