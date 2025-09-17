@@ -1,128 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Button,
-  Pagination,
   Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  OutlinedInput,
-  InputAdornment,
-  Snackbar,
-  Alert,
 } from '@mui/material';
 import {
   Add,
-  Search,
-  Refresh,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { deckService } from '../services/api';
-import api from '../services/api';
-import type { Deck, PostDeckDto, PutDeckDto, Page } from '../types/api';
-import DeckCard from '../components/DeckCard';
+import type { Deck, PostDeckDto, PutDeckDto } from '../types/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
-import { useErrorHandler } from '../hooks/useErrorHandler';
+import DeckFormModal from '../components/DeckFormModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import SearchAndActionsBar from '../components/SearchAndActionsBar';
+import DecksGrid from '../components/DecksGrid';
+import Notification from '../components/Notification';
+import { useDecksManager } from '../hooks/useDecksManager';
 
 const DecksPage: React.FC = () => {
   const navigate = useNavigate();
-  const { handleError } = useErrorHandler({
-    onRetryableError: () => {
-      // Automatically retry loading decks after a short delay for 503 errors
-      setTimeout(() => loadDecks(currentPage), 3000);
-    }
-  });
   
-  // State
-  const [decks, setDecks] = useState<Page<Deck> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
+  // Deck management hook
+  const {
+    decks,
+    loading,
+    error,
+    currentPage,
+    setCurrentPage,
+    searchQuery,
+    setSearchQuery,
+    filteredDecks,
+    createDeck,
+    updateDeck,
+    deleteDeck,
+    refresh,
+  } = useDecksManager();
+  
+  // Modal states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
-
-  // Form state for new deck
+  
+  // Form states
   const [newDeck, setNewDeck] = useState<PostDeckDto>({
     name: '',
     description: '',
     coverImageUrl: '',
     hexColor: '#1976d2',
   });
-
-  // Form state for editing deck
+  
   const [editDeck, setEditDeck] = useState<PutDeckDto>({
     name: '',
     description: '',
     coverImageUrl: '',
     hexColor: '#1976d2',
   });
+  
+  // Loading states
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Notification state
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
 
-  // Load decks
-  const loadDecks = async (page = 1) => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('Loading decks - page:', page);
-      const data = await deckService.getAll(page - 1, 12); // 0-based pagination
-      console.log('API Response:', data);
-      console.log('Decks content:', data?.content);
-      console.log('Total elements:', data?.totalElements);
-      setDecks(data);
-    } catch (err) {
-      console.error('Error loading decks:', err);
-      handleError(err, 'load decks');
-      setError('Failed to load decks. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initial load and connectivity test
-  useEffect(() => {
-    const initializeApp = async () => {
-      console.log('Initializing app...');
-      
-      // Test connectivity first
-      const isConnected = await deckService.testConnection();
-      console.log('API connectivity test:', isConnected);
-      
-      if (!isConnected) {
-        setError('Unable to connect to API. Please check if the server is running on http://localhost:8080');
-        setLoading(false);
-        return;
-      }
-      
-      // Load decks
-      loadDecks(currentPage);
-    };
-    
-    initializeApp();
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Handle page change
+  // Handlers
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
   };
 
-  // Handle deck creation
   const handleCreateDeck = async () => {
-    try {
-      await deckService.create(newDeck);
+    setIsCreating(true);
+    const success = await createDeck(newDeck);
+    
+    if (success) {
       setCreateDialogOpen(false);
       setNewDeck({
         name: '',
@@ -130,29 +87,28 @@ const DecksPage: React.FC = () => {
         coverImageUrl: '',
         hexColor: '#1976d2',
       });
-      setSnackbar({
+      setNotification({
         open: true,
         message: 'Deck created successfully!',
         severity: 'success',
       });
-      loadDecks(currentPage); // Reload current page
-    } catch (err) {
-      console.error('Error creating deck:', err);
-      handleError(err, 'create deck');
-      setSnackbar({
+    } else {
+      setNotification({
         open: true,
         message: 'Failed to create deck. Please try again.',
         severity: 'error',
       });
     }
+    setIsCreating(false);
   };
 
-  // Handle deck editing
   const handleEditDeck = async () => {
     if (!selectedDeck) return;
     
-    try {
-      await deckService.update(selectedDeck.id, editDeck);
+    setIsUpdating(true);
+    const success = await updateDeck(selectedDeck.id, editDeck);
+    
+    if (success) {
       setEditDialogOpen(false);
       setSelectedDeck(null);
       setEditDeck({
@@ -161,24 +117,45 @@ const DecksPage: React.FC = () => {
         coverImageUrl: '',
         hexColor: '#1976d2',
       });
-      setSnackbar({
+      setNotification({
         open: true,
         message: 'Deck updated successfully!',
         severity: 'success',
       });
-      loadDecks(currentPage); // Reload current page
-    } catch (err) {
-      console.error('Error updating deck:', err);
-      handleError(err, 'update deck');
-      setSnackbar({
+    } else {
+      setNotification({
         open: true,
         message: 'Failed to update deck. Please try again.',
         severity: 'error',
       });
     }
+    setIsUpdating(false);
   };
 
-  // Open edit dialog with deck data
+  const handleDeleteDeck = async () => {
+    if (!selectedDeck) return;
+    
+    setIsDeleting(true);
+    const success = await deleteDeck(selectedDeck.id);
+    
+    if (success) {
+      setDeleteDialogOpen(false);
+      setSelectedDeck(null);
+      setNotification({
+        open: true,
+        message: 'Deck deleted successfully!',
+        severity: 'success',
+      });
+    } else {
+      setNotification({
+        open: true,
+        message: 'Failed to delete deck. Please try again.',
+        severity: 'error',
+      });
+    }
+    setIsDeleting(false);
+  };
+
   const openEditDialog = (deck: Deck) => {
     setSelectedDeck(deck);
     setEditDeck({
@@ -190,152 +167,49 @@ const DecksPage: React.FC = () => {
     setEditDialogOpen(true);
   };
 
-  // Handle deck deletion
-  const handleDeleteDeck = async () => {
-    if (!selectedDeck) return;
-    
-    try {
-      await deckService.delete(selectedDeck.id);
-      setDeleteDialogOpen(false);
-      setSelectedDeck(null);
-      setSnackbar({
-        open: true,
-        message: 'Deck deleted successfully!',
-        severity: 'success',
-      });
-      loadDecks(currentPage); // Reload current page
-    } catch (err) {
-      console.error('Error deleting deck:', err);
-      handleError(err, 'delete deck');
-      setSnackbar({
-        open: true,
-        message: 'Failed to delete deck. Please try again.',
-        severity: 'error',
-      });
-    }
+  const openDeleteDialog = (deck: Deck) => {
+    setSelectedDeck(deck);
+    setDeleteDialogOpen(true);
   };
 
-  // Filter decks based on search query
-  const filteredDecks = React.useMemo(() => {
-    if (!decks?.content) {
-      console.log('No decks content available');
-      return [];
-    }
-    
-    if (!searchQuery.trim()) {
-      console.log('No search query, returning all decks:', decks.content.length);
-      return decks.content;
-    }
-    
-    const filtered = decks.content.filter(deck =>
-      deck.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deck.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    console.log('Filtered decks:', filtered.length, 'from', decks.content.length);
-    return filtered;
-  }, [decks?.content, searchQuery]);
+  const handleEditDeckChange = (deck: PostDeckDto | PutDeckDto) => {
+    setEditDeck(deck as PutDeckDto);
+  };
+
+  const handleNewDeckChange = (deck: PostDeckDto | PutDeckDto) => {
+    setNewDeck(deck as PostDeckDto);
+  };
+
+  const handleDebugTest = () => {
+    console.log('Debug test action triggered');
+  };
 
   if (loading) {
     return <LoadingSpinner message="Loading decks..." />;
   }
 
   if (error) {
-    return <ErrorDisplay message={error} onRetry={() => loadDecks(currentPage)} />;
+    return <ErrorDisplay message={error} onRetry={refresh} />;
   }
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ 
-        mb: 3, 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: { xs: 2, sm: 0 },
-      }}>
-        <Typography variant="h4" component="h1" sx={{ 
-          fontSize: { xs: '1.75rem', sm: '2.125rem' } 
-        }}>
-          My Decks
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setCreateDialogOpen(true)}
-          size="large"
-          sx={{ 
-            minWidth: { xs: '100%', sm: 'auto' },
-            alignSelf: { xs: 'stretch', sm: 'auto' }
-          }}
-        >
-          Create Deck
-        </Button>
-      </Box>
+      {/* Page Title */}
+      <Typography variant="h4" component="h1" sx={{ mb: 3, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+        My Decks
+      </Typography>
 
-      {/* Search and Actions */}
-      <Box sx={{ 
-        mb: 3, 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: 2, 
-        alignItems: { xs: 'stretch', sm: 'center' } 
-      }}>
-        <FormControl variant="outlined" sx={{ 
-          flexGrow: 1, 
-          maxWidth: { xs: '100%', sm: 400 } 
-        }}>
-          <InputLabel htmlFor="search-decks">Search decks</InputLabel>
-          <OutlinedInput
-            id="search-decks"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            startAdornment={
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            }
-            label="Search decks"
-          />
-        </FormControl>
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={() => loadDecks(currentPage)}
-          sx={{ 
-            minWidth: { xs: '100%', sm: 'auto' } 
-          }}
-        >
-          Refresh
-        </Button>
-        
-        {/* Debug: Test 503 Error - remove in production */}
-        {import.meta.env.DEV && (
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={async () => {
-              try {
-                // Simulate a 503 error by calling a non-existent endpoint
-                await api.get('/test-503');
-              } catch (err) {
-                handleError(err, 'test 503 error');
-                setSnackbar({
-                  open: true,
-                  message: 'Service unavailable error test triggered',
-                  severity: 'error',
-                });
-              }
-            }}
-            sx={{ 
-              minWidth: { xs: '100%', sm: 'auto' } 
-            }}
-          >
-            Test 503
-          </Button>
-        )}
-      </Box>
+      {/* Search and Actions Bar */}
+      <SearchAndActionsBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onRefresh={refresh}
+        onCreateNew={() => setCreateDialogOpen(true)}
+        isLoading={loading}
+        createLabel="Create Deck"
+        showDebugActions={true}
+        onDebugAction={handleDebugTest}
+      />
 
       {/* Debug Info - remove in production */}
       {import.meta.env.DEV && (
@@ -352,79 +226,18 @@ const DecksPage: React.FC = () => {
         </Box>
       )}
 
-      {/* Stats */}
-      {decks && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Showing {filteredDecks.length} of {decks.totalElements} decks
-        </Typography>
-      )}
-
       {/* Decks Grid */}
-      {filteredDecks.length > 0 ? (
-        <>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(4, 1fr)',
-                xl: 'repeat(auto-fill, minmax(300px, 1fr))',
-              },
-              gap: { xs: 2, sm: 3 },
-              mb: 4,
-            }}
-          >
-            {filteredDecks.map((deck) => (
-              <DeckCard
-                key={deck.id}
-                deck={deck}
-                onView={(deck) => navigate(`/decks/${deck.id}/cards`)}
-                onEdit={(deck) => openEditDialog(deck)}
-                onDelete={(deck) => {
-                  setSelectedDeck(deck);
-                  setDeleteDialogOpen(true);
-                }}
-              />
-            ))}
-          </Box>
-
-          {/* Pagination */}
-          {decks && decks.totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Pagination
-                count={decks.totalPages}
-                page={currentPage}
-                onChange={handlePageChange}
-                color="primary"
-                size="large"
-              />
-            </Box>
-          )}
-        </>
-      ) : (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {searchQuery ? 'No decks found matching your search' : 'No decks found'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {searchQuery 
-              ? 'Try adjusting your search terms'
-              : 'Create your first deck to get started!'
-            }
-          </Typography>
-          {!searchQuery && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setCreateDialogOpen(true)}
-            >
-              Create Your First Deck
-            </Button>
-          )}
-        </Box>
-      )}
+      <DecksGrid
+        decks={decks}
+        filteredDecks={filteredDecks}
+        searchQuery={searchQuery}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+        onViewDeck={(deck: Deck) => navigate(`/decks/${deck.id}/cards`)}
+        onEditDeck={openEditDialog}
+        onDeleteDeck={openDeleteDialog}
+        onCreateDeck={() => setCreateDialogOpen(true)}
+      />
 
       {/* Floating Action Button - apenas em mobile */}
       <Fab
@@ -434,194 +247,54 @@ const DecksPage: React.FC = () => {
           position: 'fixed',
           bottom: { xs: 16, sm: 24 },
           right: { xs: 16, sm: 24 },
-          display: { xs: 'flex', sm: 'none' }, // Só mostra em mobile
+          display: { xs: 'flex', sm: 'none' },
         }}
         onClick={() => setCreateDialogOpen(true)}
       >
         <Add />
       </Fab>
 
-      {/* Create Deck Dialog */}
-      <Dialog
+      {/* Create Deck Modal */}
+      <DeckFormModal
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={false} // Removido fullScreen para mobile
-        sx={{
-          '& .MuiDialog-paper': {
-            m: { xs: 1, sm: 2 },
-            maxHeight: { xs: '90vh', sm: 'none' },
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>Create New Deck</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Deck Name"
-            fullWidth
-            variant="outlined"
-            value={newDeck.name}
-            onChange={(e) => setNewDeck({ ...newDeck, name: e.target.value })}
-            required
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={newDeck.description}
-            onChange={(e) => setNewDeck({ ...newDeck, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Cover Image URL"
-            fullWidth
-            variant="outlined"
-            value={newDeck.coverImageUrl}
-            onChange={(e) => setNewDeck({ ...newDeck, coverImageUrl: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <TextField
-              margin="dense"
-              label="Color"
-              type="color"
-              variant="outlined"
-              value={newDeck.hexColor}
-              onChange={(e) => setNewDeck({ ...newDeck, hexColor: e.target.value })}
-              sx={{ width: { xs: '100%', sm: 120 } }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              {newDeck.hexColor}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleCreateDeck}
-            variant="contained"
-            disabled={!newDeck.name.trim()}
-          >
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSubmit={handleCreateDeck}
+        deck={newDeck}
+        onChange={handleNewDeckChange}
+        title="Create New Deck"
+        submitLabel="Create"
+        isSubmitting={isCreating}
+      />
 
-      {/* Edit Deck Dialog */}
-      <Dialog
+      {/* Edit Deck Modal */}
+      <DeckFormModal
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={false}
-        sx={{
-          '& .MuiDialog-paper': {
-            m: { xs: 1, sm: 2 },
-            maxHeight: { xs: '90vh', sm: 'none' },
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>Edit Deck</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Deck Name"
-            fullWidth
-            variant="outlined"
-            value={editDeck.name}
-            onChange={(e) => setEditDeck({ ...editDeck, name: e.target.value })}
-            required
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={editDeck.description}
-            onChange={(e) => setEditDeck({ ...editDeck, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Cover Image URL"
-            fullWidth
-            variant="outlined"
-            value={editDeck.coverImageUrl}
-            onChange={(e) => setEditDeck({ ...editDeck, coverImageUrl: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <TextField
-              margin="dense"
-              label="Color"
-              type="color"
-              variant="outlined"
-              value={editDeck.hexColor}
-              onChange={(e) => setEditDeck({ ...editDeck, hexColor: e.target.value })}
-              sx={{ width: { xs: '100%', sm: 120 } }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              {editDeck.hexColor}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleEditDeck}
-            variant="contained"
-            disabled={!editDeck.name.trim()}
-          >
-            Update
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSubmit={handleEditDeck}
+        deck={editDeck}
+        onChange={handleEditDeckChange}
+        title="Edit Deck"
+        submitLabel="Update"
+        isSubmitting={isUpdating}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Delete Deck</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "{selectedDeck?.name}"? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteDeck} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleDeleteDeck}
+        item={selectedDeck}
+        isDeleting={isDeleting}
+        itemType="Deck"
+      />
 
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          variant="filled"
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      {/* Notification */}
+      <Notification
+        open={notification.open}
+        message={notification.message}
+        severity={notification.severity}
+        onClose={() => setNotification({ ...notification, open: false })}
+      />
     </Box>
   );
 };
