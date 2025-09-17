@@ -4,9 +4,14 @@ import {
   Typography,
   Button,
   Pagination,
+  Paper,
+  alpha,
+  Fade,
 } from '@mui/material';
 import {
   Add,
+  School,
+  EmojiObjects,
 } from '@mui/icons-material';
 import type { Deck, Page } from '../types/api';
 import DeckCard from './DeckCard';
@@ -46,26 +51,94 @@ const DecksGrid: React.FC<DecksGridProps> = ({
     return (
       <Box>
         {statsComponent}
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {searchQuery ? 'No decks found matching your search' : 'No decks found'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {searchQuery 
-              ? 'Try adjusting your search terms'
-              : 'Create your first deck to get started!'
-            }
-          </Typography>
-          {!searchQuery && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={onCreateDeck}
-            >
-              Create Your First Deck
-            </Button>
-          )}
-        </Box>
+        <Paper
+          elevation={0}
+          sx={{
+            textAlign: 'center',
+            py: 8,
+            px: 4,
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${alpha('#1976d2', 0.03)}, ${alpha('#42a5f5', 0.06)})`,
+            border: `1px solid ${alpha('#1976d2', 0.1)}`,
+          }}
+        >
+          <Fade in timeout={600}>
+            <Box>
+              {searchQuery ? (
+                <School 
+                  sx={{ 
+                    fontSize: 80, 
+                    color: 'text.disabled',
+                    mb: 2,
+                  }} 
+                />
+              ) : (
+                <EmojiObjects 
+                  sx={{ 
+                    fontSize: 80, 
+                    color: 'warning.main',
+                    mb: 2,
+                    filter: 'drop-shadow(0 2px 8px rgba(255, 193, 7, 0.3))',
+                  }} 
+                />
+              )}
+              
+              <Typography 
+                variant="h5" 
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  mb: 1,
+                }}
+              >
+                {searchQuery ? 'No decks found' : 'Ready to start learning?'}
+              </Typography>
+              
+              <Typography 
+                variant="body1" 
+                color="text.secondary" 
+                sx={{ 
+                  mb: 4,
+                  fontSize: '1.1rem',
+                  lineHeight: 1.6,
+                  maxWidth: 400,
+                  mx: 'auto',
+                }}
+              >
+                {searchQuery 
+                  ? 'Try adjusting your search terms to find the perfect deck'
+                  : 'Create your first study deck and embark on your learning journey!'
+                }
+              </Typography>
+              
+              {!searchQuery && (
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Add />}
+                  onClick={onCreateDeck}
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+                    '&:hover': {
+                      boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
+                      transform: 'translateY(-2px)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Create Your First Deck
+                </Button>
+              )}
+            </Box>
+          </Fade>
+        </Paper>
       </Box>
     );
   }
@@ -83,20 +156,29 @@ const DecksGrid: React.FC<DecksGridProps> = ({
             sm: 'repeat(2, 1fr)',
             md: 'repeat(3, 1fr)',
             lg: 'repeat(4, 1fr)',
-            xl: 'repeat(auto-fill, minmax(300px, 1fr))',
           },
           gap: { xs: 2, sm: 3 },
           mb: 4,
         }}
       >
-        {filteredDecks.map((deck) => (
-          <DeckCard
+        {filteredDecks.map((deck, index) => (
+          <Fade 
             key={deck.id}
-            deck={deck}
-            onView={onViewDeck}
-            onEdit={onEditDeck}
-            onDelete={onDeleteDeck}
-          />
+            in 
+            timeout={600} 
+            style={{ 
+              transitionDelay: `${index * 100}ms` 
+            }}
+          >
+            <Box>
+              <DeckCard
+                deck={deck}
+                onView={onViewDeck}
+                onEdit={onEditDeck}
+                onDelete={onDeleteDeck}
+              />
+            </Box>
+          </Fade>
         ))}
       </Box>
 

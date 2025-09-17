@@ -3,9 +3,13 @@ import {
   Box,
   Typography,
   Fab,
+  Container,
+  Paper,
 } from '@mui/material';
 import {
   Add,
+  AutoStories,
+  Lightbulb,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { Deck, PostDeckDto, PutDeckDto } from '../types/api';
@@ -193,11 +197,90 @@ const DecksPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      {/* Page Title */}
-      <Typography variant="h4" component="h1" sx={{ mb: 3, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-        My Decks
-      </Typography>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Hero Header */}
+      <Box 
+        sx={{ 
+          mb: 6,
+          textAlign: 'center',
+          position: 'relative',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            mb: 2,
+          }}
+        >
+          <AutoStories 
+            sx={{ 
+              fontSize: 48, 
+              color: 'primary.main',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            }} 
+          />
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            sx={{ 
+              fontWeight: 700,
+              fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+              background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            }}
+          >
+            My Study Decks
+          </Typography>
+        </Box>
+        
+        <Typography 
+          variant="h6" 
+          color="text.secondary"
+          sx={{ 
+            fontSize: { xs: '1rem', sm: '1.125rem' },
+            fontWeight: 400,
+            mb: 3,
+            maxWidth: 600,
+            mx: 'auto',
+          }}
+        >
+          Organize your knowledge, boost your learning
+        </Typography>
+
+        {/* Quick stats */}
+        <Paper
+          elevation={0}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            px: 3,
+            py: 1.5,
+            borderRadius: 20,
+            bgcolor: 'rgba(25, 118, 210, 0.08)',
+            border: '1px solid rgba(25, 118, 210, 0.2)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoStories sx={{ fontSize: 20, color: 'primary.main' }} />
+            <Typography variant="body2" color="text.secondary">
+              <strong>{decks?.content?.length || 0}</strong> decks
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Lightbulb sx={{ fontSize: 20, color: 'warning.main' }} />
+            <Typography variant="body2" color="text.secondary">
+              <strong>{decks?.content?.reduce((sum, deck) => sum + (deck.cardsCount || 0), 0) || 0}</strong> cards
+            </Typography>
+          </Box>
+        </Paper>
+      </Box>
 
       {/* Search and Actions Bar */}
       <SearchAndActionsBar
@@ -239,19 +322,29 @@ const DecksPage: React.FC = () => {
         onCreateDeck={() => setCreateDialogOpen(true)}
       />
 
-      {/* Floating Action Button - apenas em mobile */}
+      {/* Floating Action Button - Enhanced */}
       <Fab
         color="primary"
         aria-label="add deck"
         sx={{
           position: 'fixed',
-          bottom: { xs: 16, sm: 24 },
-          right: { xs: 16, sm: 24 },
-          display: { xs: 'flex', sm: 'none' },
+          bottom: { xs: 24, sm: 32 },
+          right: { xs: 24, sm: 32 },
+          display: { xs: 'flex', md: 'none' },
+          size: 'large',
+          boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+          '&:hover': {
+            boxShadow: '0 12px 35px rgba(25, 118, 210, 0.5)',
+            transform: 'scale(1.1)',
+          },
+          '&:active': {
+            transform: 'scale(0.95)',
+          },
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
         onClick={() => setCreateDialogOpen(true)}
       >
-        <Add />
+        <Add sx={{ fontSize: 28 }} />
       </Fab>
 
       {/* Create Deck Modal */}
@@ -295,7 +388,7 @@ const DecksPage: React.FC = () => {
         severity={notification.severity}
         onClose={() => setNotification({ ...notification, open: false })}
       />
-    </Box>
+    </Container>
   );
 };
 
