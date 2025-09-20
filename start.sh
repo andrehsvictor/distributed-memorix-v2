@@ -46,10 +46,11 @@ check_service() {
 check_eureka_registration() {
     local service_name=$1
     local expected_instances=$2
-    local timeout=60
+    local timeout=120  # Increased from 60 to 120 seconds
     local count=0
     
     echo "⏳ Waiting for $expected_instances instance(s) of $service_name to register with Eureka..."
+    echo "   This may take up to 2 minutes due to Eureka's registration process..."
     
     while [ $count -lt $timeout ]; do
         local registered=$(curl -s "http://localhost:8761/eureka/apps/$service_name" 2>/dev/null | grep -o "<instance>" | wc -l)
@@ -59,12 +60,88 @@ check_eureka_registration() {
             return 0
         fi
         
-        sleep 2
-        count=$((count + 2))
+        # Show progress every 10 seconds
+        if [ $((count % 10)) -eq 0 ]; then
+            echo "📊 Progress: $registered/$expected_instances instances registered for $service_name (${count}s elapsed)"
+        fi
+        
+        sleep 5  # Check every 5 seconds
+        count=$((count + 5))
     done
     
     echo "⚠️  Only $registered out of $expected_instances instance(s) of $service_name registered within ${timeout}s"
+    echo "   Check individual instance logs for detailed error information"
     return 1
+}
+
+# Function to verify instance health and port allocation
+verify_instances_health() {
+    local service_name=$1
+    local service_dir=$2
+    local replicas=$3
+    
+    echo "🔍 Verifying health of $service_name instances..."
+    
+    local healthy_instances=0
+    
+    for i in $(seq 1 $replicas); do
+        local instance_name="${service_name}-${i}"
+        local log_file="${service_dir}/${instance_name}.log"
+        local pid_file="${service_dir}/${instance_name}.pid"
+        
+        if [ -f "$pid_file" ]; then
+            local pid=$(cat "$pid_file")
+            
+            # Check if process is still running
+            if kill -0 "$pid" 2>/dev/null; then
+                echo "   ✅ Instance $i (PID: $pid) is running"
+                
+                if [ -f "$log_file" ]; then
+                    # Check if instance got a port (for random port services)
+                    local port_info=$(grep "Tomcat started on port(s):" "$log_file" 2>/dev/null | tail -1)
+                    if [ -n "$port_info" ]; then
+                        local port=$(echo "$port_info" | grep -o "[0-9]\+" | head -1)
+                        echo "      🔌 Port: $port"
+                        healthy_instances=$((healthy_instances + 1))
+                    else
+                        echo "      ⚠️  Port information not found in logs yet"
+                    fi
+                    
+                    # Check for Eureka registration attempts
+                    local eureka_registration=$(grep -c "DiscoveryClient_.*: registering service" "$log_file" 2>/dev/null || echo "0")
+                    if [ "$eureka_registration" -gt 0 ]; then
+                        echo "      📝 Eureka registration attempts: $eureka_registration"
+                    fi
+                    
+                    # Check for errors
+                    local errors=$(grep -c "ERROR\|Exception\|Failed" "$log_file" 2>/dev/null || echo "0")
+                    if [ "$errors" -gt 0 ]; then
+                        echo "      ❌ Errors found in logs: $errors"
+                        echo "      💡 Check $log_file for details"
+                    fi
+                fi
+            else
+                echo "   ❌ Instance $i (PID: $pid) is not running"
+                
+                # Show last few lines of log if process died
+                if [ -f "$log_file" ]; then
+                    echo "      📝 Last log entries:"
+                    tail -3 "$log_file" 2>/dev/null | sed 's/^/         /'
+                fi
+            fi
+        else
+            echo "   ❌ Instance $i: PID file not found"
+        fi
+    done
+    
+    echo "   📊 Summary: $healthy_instances/$replicas instances appear healthy"
+    
+    if [ "$healthy_instances" -lt "$replicas" ]; then
+        echo "   ⚠️  Some instances may have issues. Check logs for details."
+        return 1
+    fi
+    
+    return 0
 }
 
 # Function to start a service with multiple replicas in background
@@ -83,10 +160,23 @@ start_service() {
         
         if [[ "$service_name" == "deck-service" || "$service_name" == "card-service" ]]; then
             # For deck and card services, let Spring Boot choose random port (server.port: 0)
+            # Add progressive delay to prevent concurrency issues
+            if [ $i -gt 1 ]; then
+                local delay=$((10 + (i - 1) * 5))  # 10s, 15s, 20s, 25s... delay between instances
+                echo "   ⏳ Waiting ${delay}s before starting instance $i (prevents Eureka registration conflicts)..."
+                sleep $delay
+            fi
+            
             echo "   Starting instance $i (random port)..."
             ./mvnw spring-boot:run > "${instance_name}.log" 2>&1 &
         else
             # For infrastructure services (eureka, config, gateway), use fixed ports
+            # Smaller delay for fixed port services
+            if [ $i -gt 1 ]; then
+                echo "   ⏳ Waiting 5s before starting instance $i..."
+                sleep 5
+            fi
+            
             local port=$((fixed_port + i - 1))
             echo "   Starting instance $i on port $port..."
             SERVER_PORT=$port ./mvnw spring-boot:run > "${instance_name}.log" 2>&1 &
@@ -100,9 +190,12 @@ start_service() {
         # Add PID to cleanup array
         PIDS+=($pid)
         
-        # Small delay between instances to avoid startup conflicts
-        sleep 2
+        # Wait for the instance to at least start before proceeding to next
+        echo "   ⏳ Allowing instance $i time to initialize..."
+        sleep 8
     done
+    
+    echo "   ✅ All $replicas instance(s) of $service_name have been started"
 }
 
 # Store PIDs for cleanup
@@ -207,9 +300,15 @@ check_service "http://localhost:8080/actuator/health" 30
 echo "Starting Deck Service..."
 start_service "deck-service" "deck-service" "" $DECK_REPLICAS
 
+# Verify Deck Service instances health
+verify_instances_health "deck-service" "deck-service" $DECK_REPLICAS
+
 # Start Card Service
 echo "Starting Card Service..."
 start_service "card-service" "card-service" "" $CARD_REPLICAS
+
+# Verify Card Service instances health
+verify_instances_health "card-service" "card-service" $CARD_REPLICAS
 
 # Wait for services to register with Eureka
 echo "⏳ Waiting for services to register with Eureka..."
