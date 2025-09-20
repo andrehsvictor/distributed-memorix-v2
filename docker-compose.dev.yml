@@ -53,28 +53,28 @@ services:
     networks:
       - memorix-network
 
-  prometheus:
-    image: prom/prometheus
-    container_name: memorix.prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - memorix-network
+  # prometheus:
+  #   image: prom/prometheus
+  #   container_name: memorix.prometheus
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - memorix-network
 
-  grafana:
-    image: grafana/grafana
-    container_name: memorix.grafana
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: grafana
-      GF_SECURITY_ADMIN_PASSWORD: grafana
-    depends_on:
-      - prometheus
-    networks:
-      - memorix-network
+  # grafana:
+  #   image: grafana/grafana
+  #   container_name: memorix.grafana
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     GF_SECURITY_ADMIN_USER: grafana
+  #     GF_SECURITY_ADMIN_PASSWORD: grafana
+  #   depends_on:
+  #     - prometheus
+  #   networks:
+  #     - memorix-network
 
 networks:
   memorix-network:
