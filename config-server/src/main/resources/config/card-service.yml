@@ -29,6 +29,10 @@ management:
       exposure:
         include: prometheus,health,info
 
+logging:
+  level:
+    org.springframework.web: DEBUG
+
 server:
   port: 0
 
