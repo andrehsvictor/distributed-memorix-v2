@@ -1,5 +1,4 @@
 #!/bin/bash
-# filepath: /home/andrehsvictor/Projects/distributed-memorix-v2/load.sh
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,454 +12,309 @@ NC='\033[0m' # No Color
 # Test configuration
 GATEWAY_URL="http://localhost:8080"
 EUREKA_URL="http://localhost:8761"
-NUM_REQUESTS=100
+TOTAL_REQUESTS=100
 CONCURRENT_REQUESTS=20
 
-echo -e "${BLUE}🧪 Distributed Memorix Load Distribution Test${NC}"
-echo "=================================================="
+echo -e "${BLUE}🚀 Load Distribution Test for Memorix${NC}"
+echo "============================================"
 echo ""
 
-# Function to check if required tools are available
-check_dependencies() {
-    local missing_tools=()
-    
-    if ! command -v curl &> /dev/null; then
-        missing_tools+=("curl")
-    fi
-    
-    if ! command -v bc &> /dev/null; then
-        echo -e "${YELLOW}⚠️  'bc' calculator not found. Some calculations may be limited.${NC}"
-    fi
-    
-    # Check if GNU parallel is available (preferred for true concurrency)
-    if command -v parallel &> /dev/null; then
-        echo -e "${GREEN}✅ GNU parallel found - using for optimal concurrency${NC}"
-        USE_PARALLEL=true
-    else
-        echo -e "${YELLOW}⚠️  GNU parallel not found - using xargs for concurrency${NC}"
-        echo -e "${CYAN}   Install with: sudo apt-get install parallel (Ubuntu/Debian)${NC}"
-        USE_PARALLEL=false
-    fi
-    
-    if [ ${#missing_tools[@]} -ne 0 ]; then
-        echo -e "${RED}❌ Missing required tools: ${missing_tools[*]}${NC}"
-        exit 1
-    fi
-    
-    echo ""
-}
-
-# Function to check if services are running
+# Check if services are running
 check_services() {
-    echo -e "${YELLOW}🔍 Checking if services are available...${NC}"
+    echo -e "${YELLOW}🔍 Checking services...${NC}"
     
-    # Check Gateway
     if ! curl -s -f "$GATEWAY_URL/actuator/health" > /dev/null; then
-        echo -e "${RED}❌ API Gateway is not responding at $GATEWAY_URL${NC}"
+        echo -e "${RED}❌ API Gateway not responding${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✅ API Gateway is responding${NC}"
     
-    # Check Eureka
     if ! curl -s -f "$EUREKA_URL/actuator/health" > /dev/null; then
-        echo -e "${RED}❌ Eureka Server is not responding at $EUREKA_URL${NC}"
+        echo -e "${RED}❌ Eureka Server not responding${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✅ Eureka Server is responding${NC}"
     
+    echo -e "${GREEN}✅ Services are running${NC}"
     echo ""
 }
 
-# Function to get registered instances from Eureka
+# Get service instances from Eureka
 get_service_instances() {
     local service_name=$1
-    echo -e "${YELLOW}📊 Getting $service_name instances from Eureka...${NC}"
+    echo -e "${YELLOW}📊 Checking $service_name instances...${NC}"
     
-    local instances=$(curl -s "$EUREKA_URL/eureka/apps/$service_name" 2>/dev/null | grep -o "<instance>" | wc -l)
-    echo -e "${CYAN}   Found $instances registered instance(s) of $service_name${NC}"
+    local response=$(curl -s "$EUREKA_URL/eureka/apps/$service_name" 2>/dev/null)
+    local instances=$(echo "$response" | grep -o "<instance>" | wc -l)
     
-    # Get instance details
-    local instance_info=$(curl -s "$EUREKA_URL/eureka/apps/$service_name" 2>/dev/null | grep -E "<hostName>|<port>|<instanceId>" | sed 's/<[^>]*>//g' | sed 's/^[ \t]*//')
-    if [ -n "$instance_info" ]; then
-        echo -e "${CYAN}   Instance details:${NC}"
-        echo "$instance_info" | sed 's/^/      /'
+    if [ "$instances" -eq 0 ]; then
+        echo -e "${RED}❌ No instances found for $service_name${NC}"
+        return 1
     fi
+    
+    echo -e "${GREEN}✅ Found $instances instance(s) of $service_name${NC}"
+    
+    # Extract instance details
+    echo "$response" | grep -E "<hostName>|<port>" | while read line; do
+        if [[ $line == *"<hostName>"* ]]; then
+            local host=$(echo "$line" | sed 's/<[^>]*>//g' | xargs)
+            echo -e "${CYAN}   Host: $host${NC}"
+        elif [[ $line == *"<port>"* ]]; then
+            local port=$(echo "$line" | sed 's/<[^>]*>//g' | xargs)
+            echo -e "${CYAN}   Port: $port${NC}"
+        fi
+    done
     
     echo ""
     return $instances
 }
 
-# Function to create test data
-create_test_data() {
-    echo -e "${YELLOW}📦 Creating test data...${NC}"
+# Create a simple deck for testing
+create_test_deck() {
+    echo -e "${YELLOW}📦 Creating test deck...${NC}"
     
-    # Create a test deck
     local deck_payload='{
         "name": "Load Test Deck",
-        "description": "Deck created for load distribution testing",
-        "hexColor": "#FF5722"
+        "description": "Test deck for load distribution",
+        "hexColor": "#2196F3"
     }'
     
-    echo -e "${CYAN}   Creating test deck...${NC}"
-    local deck_response=$(curl -s -X POST "$GATEWAY_URL/api/v2/decks" \
+    local response=$(curl -s -X POST "$GATEWAY_URL/api/v2/decks" \
         -H "Content-Type: application/json" \
         -d "$deck_payload")
     
-    if [ $? -eq 0 ]; then
-        local deck_id=$(echo "$deck_response" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-        if [ -n "$deck_id" ]; then
-            echo -e "${GREEN}   ✅ Test deck created with ID: $deck_id${NC}"
-            echo "$deck_id" > /tmp/test_deck_id.txt
-        else
-            echo -e "${RED}   ❌ Failed to extract deck ID from response${NC}"
-            echo "   Response: $deck_response"
-        fi
+    local deck_id=$(echo "$response" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -n "$deck_id" ]; then
+        echo -e "${GREEN}✅ Test deck created: $deck_id${NC}"
+        echo "$deck_id" > /tmp/test_deck_id.txt
     else
-        echo -e "${RED}   ❌ Failed to create test deck${NC}"
-    fi
-    
-    # Create test cards if deck was created successfully
-    if [ -f /tmp/test_deck_id.txt ]; then
-        local deck_id=$(cat /tmp/test_deck_id.txt)
-        echo -e "${CYAN}   Creating test cards...${NC}"
-        
-        for i in {1..5}; do
-            local card_payload="{
-                \"question\": \"Load Test Question $i\",
-                \"answer\": \"Load Test Answer $i\"
-            }"
-            
-            local card_response=$(curl -s -X POST "$GATEWAY_URL/api/v2/decks/$deck_id/cards" \
-                -H "Content-Type: application/json" \
-                -d "$card_payload")
-            
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}   ✅ Test card $i created${NC}"
-            else
-                echo -e "${RED}   ❌ Failed to create test card $i${NC}"
-            fi
-        done
-    fi
-    
-    echo ""
-}
-
-# Function to perform a single HTTP request
-perform_request() {
-    local url=$1
-    local method=${2:-GET}
-    local request_id=$3
-    
-    local start_time=$(date +%s.%N)
-    local response=$(curl -s -w "%{http_code}|%{time_total}|%{size_download}|%{time_connect}" \
-        -X "$method" "$url" 2>/dev/null)
-    local end_time=$(date +%s.%N)
-    local total_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
-    
-    echo "$request_id|$response|$total_time"
-}
-
-# Function to test concurrent load distribution
-test_concurrent_load_distribution() {
-    local service_name=$1
-    local endpoint=$2
-    local method=${3:-GET}
-    local num_requests=${4:-$NUM_REQUESTS}
-    local concurrent_level=${5:-$CONCURRENT_REQUESTS}
-    
-    echo -e "${YELLOW}🎯 Testing concurrent load distribution for $service_name${NC}"
-    echo -e "${CYAN}   Endpoint: $method $endpoint${NC}"
-    echo -e "${CYAN}   Total requests: $num_requests${NC}"
-    echo -e "${CYAN}   Concurrent requests: $concurrent_level${NC}"
-    echo -e "${CYAN}   Concurrency method: $([ "$USE_PARALLEL" = true ] && echo "GNU parallel" || echo "xargs")${NC}"
-    
-    local full_url="$GATEWAY_URL$endpoint"
-    local response_file="/tmp/${service_name}_concurrent_responses.txt"
-    local start_time=$(date +%s.%N)
-    
-    > "$response_file"
-    
-    echo -e "${CYAN}   🚀 Launching $num_requests concurrent requests...${NC}"
-    
-    if [ "$USE_PARALLEL" = true ]; then
-        # Use GNU parallel for true concurrency
-        seq 1 $num_requests | parallel -j $concurrent_level \
-            "perform_request '$full_url' '$method' {}" >> "$response_file"
-    else
-        # Use xargs as fallback
-        seq 1 $num_requests | xargs -n 1 -P $concurrent_level -I {} \
-            bash -c "perform_request '$full_url' '$method' {}" >> "$response_file"
-    fi
-    
-    local end_time=$(date +%s.%N)
-    local total_duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
-    
-    echo -e "${GREEN}   ✅ All requests completed in ${total_duration}s${NC}"
-    echo ""
-    
-    # Analyze results
-    analyze_concurrent_results "$service_name" "$response_file" "$num_requests" "$total_duration"
-    
-    # Cleanup
-    rm -f "$response_file"
-}
-
-# Function to analyze concurrent test results
-analyze_concurrent_results() {
-    local service_name=$1
-    local response_file=$2
-    local expected_requests=$3
-    local total_duration=$4
-    
-    echo -e "${YELLOW}📈 Concurrent Results for $service_name:${NC}"
-    
-    local actual_responses=$(wc -l < "$response_file" 2>/dev/null || echo "0")
-    local success_count=$(awk -F'|' '$3 ~ /^2[0-9][0-9]$/ {count++} END {print count+0}' "$response_file")
-    local error_count=$((actual_responses - success_count))
-    local success_rate=$((success_count * 100 / expected_requests))
-    
-    echo -e "${CYAN}   📊 Summary:${NC}"
-    echo -e "${CYAN}     Expected requests: $expected_requests${NC}"
-    echo -e "${CYAN}     Actual responses: $actual_responses${NC}"
-    echo -e "${CYAN}     Successful (2xx): $success_count${NC}"
-    echo -e "${CYAN}     Errors: $error_count${NC}"
-    echo -e "${CYAN}     Success rate: $success_rate%${NC}"
-    echo -e "${CYAN}     Total duration: ${total_duration}s${NC}"
-    
-    if [ "$actual_responses" -gt 0 ]; then
-        # Calculate throughput
-        local throughput=$(echo "scale=2; $success_count / $total_duration" | bc -l 2>/dev/null || echo "0")
-        echo -e "${CYAN}     Throughput: ${throughput} req/s${NC}"
-        
-        # Response time statistics
-        local avg_response_time=$(awk -F'|' '{sum+=$4; count++} END {if(count>0) printf "%.3f", sum/count; else print "0"}' "$response_file")
-        local min_response_time=$(awk -F'|' 'NR==1{min=$4} {if($4<min) min=$4} END {printf "%.3f", min}' "$response_file")
-        local max_response_time=$(awk -F'|' '{if($4>max) max=$4} END {printf "%.3f", max}' "$response_file")
-        
-        echo -e "${CYAN}   ⏱️  Response Times:${NC}"
-        echo -e "${CYAN}     Average: ${avg_response_time}s${NC}"
-        echo -e "${CYAN}     Minimum: ${min_response_time}s${NC}"
-        echo -e "${CYAN}     Maximum: ${max_response_time}s${NC}"
-        
-        # HTTP status code distribution
-        echo -e "${CYAN}   📋 HTTP Status Codes:${NC}"
-        awk -F'|' '{print $3}' "$response_file" | sort | uniq -c | sort -nr | while read count code; do
-            echo -e "${CYAN}     $code: $count responses${NC}"
-        done
-        
-        # Response size statistics
-        local avg_size=$(awk -F'|' '{sum+=$5; count++} END {if(count>0) printf "%.0f", sum/count; else print "0"}' "$response_file")
-        echo -e "${CYAN}   📦 Average response size: ${avg_size} bytes${NC}"
-        
-        # Connection time statistics
-        local avg_connect_time=$(awk -F'|' '{sum+=$6; count++} END {if(count>0) printf "%.3f", sum/count; else print "0"}' "$response_file")
-        echo -e "${CYAN}   🔌 Average connection time: ${avg_connect_time}s${NC}"
-    fi
-    
-    echo ""
-}
-
-# Function to test burst load (maximum concurrency)
-test_burst_load() {
-    echo -e "${YELLOW}💥 Testing burst load (maximum concurrency)...${NC}"
-    
-    local burst_requests=50
-    local max_concurrent=50
-    
-    # Test deck service burst
-    test_concurrent_load_distribution "DECK-SERVICE-BURST" "/api/v2/decks" "GET" $burst_requests $max_concurrent
-    
-    # Test card service burst if deck exists
-    if [ -f /tmp/test_deck_id.txt ]; then
-        local deck_id=$(cat /tmp/test_deck_id.txt)
-        test_concurrent_load_distribution "CARD-SERVICE-BURST" "/api/v2/decks/$deck_id/cards" "GET" $burst_requests $max_concurrent
-    fi
-}
-
-# Function to test mixed workload
-test_mixed_workload() {
-    echo -e "${YELLOW}🔀 Testing mixed workload (reads + writes)...${NC}"
-    
-    if [ ! -f /tmp/test_deck_id.txt ]; then
-        echo -e "${RED}   ❌ No test deck available for mixed workload${NC}"
-        return
-    fi
-    
-    local deck_id=$(cat /tmp/test_deck_id.txt)
-    local mixed_file="/tmp/mixed_workload_results.txt"
-    
-    > "$mixed_file"
-    
-    echo -e "${CYAN}   🚀 Launching mixed concurrent requests...${NC}"
-    
-    # Create a function for mixed requests
-    export -f perform_request
-    export GATEWAY_URL
-    export deck_id
-    
-    # Function for mixed request pattern
-    perform_mixed_request() {
-        local request_id=$1
-        local request_type=$((request_id % 10))
-        
-        if [ $request_type -lt 8 ]; then
-            # 80% reads
-            if [ $((request_id % 2)) -eq 0 ]; then
-                perform_request "$GATEWAY_URL/api/v2/decks" "GET" "$request_id"
-            else
-                perform_request "$GATEWAY_URL/api/v2/decks/$deck_id/cards" "GET" "$request_id"
-            fi
-        else
-            # 20% writes (create cards)
-            local card_data="{\"question\":\"Concurrent Question $request_id\",\"answer\":\"Concurrent Answer $request_id\"}"
-            local start_time=$(date +%s.%N)
-            local response=$(curl -s -w "%{http_code}|%{time_total}|%{size_download}|%{time_connect}" \
-                -X POST "$GATEWAY_URL/api/v2/decks/$deck_id/cards" \
-                -H "Content-Type: application/json" \
-                -d "$card_data" 2>/dev/null)
-            local end_time=$(date +%s.%N)
-            local total_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
-            echo "$request_id|$response|$total_time"
-        fi
-    }
-    
-    export -f perform_mixed_request
-    
-    local start_time=$(date +%s.%N)
-    
-    if [ "$USE_PARALLEL" = true ]; then
-        seq 1 30 | parallel -j 15 "perform_mixed_request {}" >> "$mixed_file"
-    else
-        seq 1 30 | xargs -n 1 -P 15 -I {} bash -c "perform_mixed_request {}" >> "$mixed_file"
-    fi
-    
-    local end_time=$(date +%s.%N)
-    local total_duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
-    
-    echo -e "${GREEN}   ✅ Mixed workload completed in ${total_duration}s${NC}"
-    
-    analyze_concurrent_results "MIXED-WORKLOAD" "$mixed_file" 30 "$total_duration"
-    
-    rm -f "$mixed_file"
-}
-
-# Function to test health endpoints
-test_health_endpoints() {
-    echo -e "${YELLOW}🏥 Testing health endpoints...${NC}"
-    
-    local response=$(curl -s -w "%{http_code}" "$GATEWAY_URL/actuator/health" 2>/dev/null)
-    local http_code="${response: -3}"
-    
-    if [ "$http_code" = "200" ]; then
-        echo -e "${GREEN}   ✅ Gateway health check passed${NC}"
-    else
-        echo -e "${RED}   ❌ Gateway health check failed (HTTP $http_code)${NC}"
-    fi
-    
-    echo ""
-}
-
-# Function to monitor service metrics during load test
-monitor_service_metrics() {
-    echo -e "${YELLOW}📊 Monitoring service metrics...${NC}"
-    
-    # Get Eureka service registry status
-    echo -e "${CYAN}   Eureka Service Registry Status:${NC}"
-    local eureka_apps=$(curl -s "$EUREKA_URL/eureka/apps" 2>/dev/null)
-    
-    if [ $? -eq 0 ]; then
-        echo "$eureka_apps" | grep -o "<name>[^<]*</name>" | sed 's/<[^>]*>//g' | while read service; do
-            if [ -n "$service" ]; then
-                local instances=$(echo "$eureka_apps" | grep -A 20 "<name>$service</name>" | grep -o "<instance>" | wc -l)
-                echo -e "${CYAN}      $service: $instances instance(s)${NC}"
-            fi
-        done
-    else
-        echo -e "${RED}      ❌ Failed to get Eureka status${NC}"
-    fi
-    
-    echo ""
-}
-
-# Function to cleanup test data
-cleanup_test_data() {
-    echo -e "${YELLOW}🧹 Cleaning up test data...${NC}"
-    
-    if [ -f /tmp/test_deck_id.txt ]; then
-        local deck_id=$(cat /tmp/test_deck_id.txt)
-        echo -e "${CYAN}   Deleting test deck: $deck_id${NC}"
-        
-        local response=$(curl -s -w "%{http_code}" -X DELETE "$GATEWAY_URL/api/v2/decks/$deck_id" 2>/dev/null)
-        local http_code="${response: -3}"
-        
-        if [ "$http_code" = "204" ]; then
-            echo -e "${GREEN}   ✅ Test deck deleted successfully${NC}"
-        else
-            echo -e "${RED}   ❌ Failed to delete test deck (HTTP $http_code)${NC}"
-        fi
-        
-        rm -f /tmp/test_deck_id.txt
-    fi
-    
-    # Clean up any remaining temp files
-    rm -f /tmp/*_responses.txt /tmp/*_results.txt
-    
-    echo ""
-}
-
-# Main execution
-main() {
-    check_dependencies
-    check_services
-    
-    get_service_instances "DECK-SERVICE"
-    local deck_instances=$?
-    
-    get_service_instances "CARD-SERVICE"
-    local card_instances=$?
-    
-    if [ $deck_instances -eq 0 ] || [ $card_instances -eq 0 ]; then
-        echo -e "${RED}❌ No service instances found. Make sure services are running and registered with Eureka.${NC}"
+        echo -e "${RED}❌ Failed to create test deck${NC}"
         exit 1
     fi
     
-    create_test_data
-    test_health_endpoints
-    
-    # Test concurrent load distribution for different services
-    test_concurrent_load_distribution "DECK-SERVICE" "/api/v2/decks" "GET"
-    
-    if [ -f /tmp/test_deck_id.txt ]; then
-        local deck_id=$(cat /tmp/test_deck_id.txt)
-        test_concurrent_load_distribution "CARD-SERVICE" "/api/v2/decks/$deck_id/cards" "GET"
-        test_concurrent_load_distribution "DECK-SERVICE-SPECIFIC" "/api/v2/decks/$deck_id" "GET"
-    fi
-    
-    # Test burst load
-    test_burst_load
-    
-    # Test mixed workload
-    test_mixed_workload
-    
-    monitor_service_metrics
-    cleanup_test_data
-    
-    echo -e "${GREEN}🎉 Concurrent load distribution test completed!${NC}"
-    echo ""
-    echo -e "${YELLOW}💡 Performance Analysis Tips:${NC}"
-    echo -e "${CYAN}   - Check Eureka dashboard at http://localhost:8761 for service health${NC}"
-    echo -e "${CYAN}   - Monitor service logs for load distribution patterns${NC}"
-    echo -e "${CYAN}   - Use Zipkin at http://localhost:9411 for distributed tracing${NC}"
-    echo -e "${CYAN}   - Compare response times under different concurrency levels${NC}"
-    echo -e "${CYAN}   - Look for patterns in request distribution across replicas${NC}"
     echo ""
 }
 
+# Single request function with response tracking
+make_request() {
+    local url=$1
+    local request_id=$2
+    local start_time=$(date +%s.%N)
+    
+    local response=$(curl -s -w "%{http_code}:%{time_total}:%{remote_ip}:%{local_port}" "$url" 2>/dev/null)
+    local end_time=$(date +%s.%N)
+    
+    # Extract curl stats
+    local stats="${response##*:}"
+    local http_code=$(echo "$stats" | cut -d':' -f1)
+    local response_time=$(echo "$stats" | cut -d':' -f2)
+    local remote_ip=$(echo "$stats" | cut -d':' -f3)
+    local local_port=$(echo "$stats" | cut -d':' -f4)
+    
+    local total_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
+    
+    echo "$request_id|$http_code|$response_time|$total_time|$remote_ip|$local_port"
+}
+
+# Test concurrent load distribution
+test_load_distribution() {
+    local service_name=$1
+    local endpoint=$2
+    local description=$3
+    
+    echo -e "${YELLOW}🎯 Testing: $description${NC}"
+    echo -e "${CYAN}   Service: $service_name${NC}"
+    echo -e "${CYAN}   Endpoint: $endpoint${NC}"
+    echo -e "${CYAN}   Total requests: $TOTAL_REQUESTS${NC}"
+    echo -e "${CYAN}   Concurrent: $CONCURRENT_REQUESTS${NC}"
+    echo ""
+    
+    local full_url="$GATEWAY_URL$endpoint"
+    local results_file="/tmp/load_test_${service_name}_results.txt"
+    
+    # Clear results file
+    > "$results_file"
+    
+    echo -e "${CYAN}🚀 Sending $TOTAL_REQUESTS concurrent requests...${NC}"
+    
+    # Export function for parallel execution
+    export -f make_request
+    export GATEWAY_URL
+    
+    local start_time=$(date +%s.%N)
+    
+    # Send concurrent requests
+    seq 1 $TOTAL_REQUESTS | xargs -n 1 -P $CONCURRENT_REQUESTS -I {} \
+        bash -c "make_request '$full_url' {}" >> "$results_file"
+    
+    local end_time=$(date +%s.%N)
+    local total_duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
+    
+    echo -e "${GREEN}✅ All requests completed in ${total_duration}s${NC}"
+    echo ""
+    
+    # Analyze results
+    analyze_distribution "$service_name" "$results_file" "$total_duration"
+    
+    echo ""
+}
+
+# Analyze load distribution results
+analyze_distribution() {
+    local service_name=$1
+    local results_file=$2
+    local total_duration=$3
+    
+    if [ ! -f "$results_file" ]; then
+        echo -e "${RED}❌ Results file not found${NC}"
+        return
+    fi
+    
+    local total_requests=$(wc -l < "$results_file")
+    local successful_requests=$(awk -F'|' '$2 ~ /^2[0-9][0-9]$/ {count++} END {print count+0}' "$results_file")
+    local failed_requests=$((total_requests - successful_requests))
+    
+    echo -e "${YELLOW}📈 Load Distribution Analysis for $service_name:${NC}"
+    echo ""
+    
+    # Basic statistics
+    echo -e "${CYAN}📊 Request Statistics:${NC}"
+    echo -e "${CYAN}   Total requests sent: $total_requests${NC}"
+    echo -e "${CYAN}   Successful (2xx): $successful_requests${NC}"
+    echo -e "${CYAN}   Failed: $failed_requests${NC}"
+    echo -e "${CYAN}   Success rate: $(( successful_requests * 100 / total_requests ))%${NC}"
+    echo -e "${CYAN}   Total time: ${total_duration}s${NC}"
+    echo -e "${CYAN}   Throughput: $(echo "scale=2; $successful_requests / $total_duration" | bc -l 2>/dev/null || echo "0") req/s${NC}"
+    echo ""
+    
+    # Response time analysis
+    echo -e "${CYAN}⏱️  Response Time Analysis:${NC}"
+    local avg_time=$(awk -F'|' '{sum+=$3; count++} END {if(count>0) printf "%.3f", sum/count; else print "0"}' "$results_file")
+    local min_time=$(awk -F'|' 'NR==1{min=$3} {if($3<min) min=$3} END {printf "%.3f", min}' "$results_file")
+    local max_time=$(awk -F'|' '{if($3>max) max=$3} END {printf "%.3f", max}' "$results_file")
+    
+    echo -e "${CYAN}   Average: ${avg_time}s${NC}"
+    echo -e "${CYAN}   Minimum: ${min_time}s${NC}"
+    echo -e "${CYAN}   Maximum: ${max_time}s${NC}"
+    echo ""
+    
+    # Port distribution (indicates load balancing)
+    echo -e "${CYAN}🔄 Load Distribution by Port:${NC}"
+    awk -F'|' '{print $6}' "$results_file" | sort | uniq -c | sort -nr | while read count port; do
+        if [ -n "$port" ] && [ "$port" != "0" ]; then
+            local percentage=$(echo "scale=1; $count * 100 / $total_requests" | bc -l 2>/dev/null || echo "0")
+            echo -e "${CYAN}   Port $port: $count requests (${percentage}%)${NC}"
+        fi
+    done
+    echo ""
+    
+    # HTTP status code distribution
+    echo -e "${CYAN}📋 HTTP Status Distribution:${NC}"
+    awk -F'|' '{print $2}' "$results_file" | sort | uniq -c | sort -nr | while read count status; do
+        echo -e "${CYAN}   HTTP $status: $count responses${NC}"
+    done
+    echo ""
+    
+    # Request timeline (first 10 and last 10 requests)
+    echo -e "${CYAN}📅 Request Timeline (first 10):${NC}"
+    head -10 "$results_file" | while IFS='|' read req_id http_code resp_time total_time remote_ip local_port; do
+        echo -e "${CYAN}   Request $req_id: HTTP $http_code, ${resp_time}s, port $local_port${NC}"
+    done
+    echo ""
+    
+    echo -e "${CYAN}📅 Request Timeline (last 10):${NC}"
+    tail -10 "$results_file" | while IFS='|' read req_id http_code resp_time total_time remote_ip local_port; do
+        echo -e "${CYAN}   Request $req_id: HTTP $http_code, ${resp_time}s, port $local_port${NC}"
+    done
+    echo ""
+}
+
+# Test with real-time monitoring
+test_with_monitoring() {
+    echo -e "${YELLOW}📊 Starting real-time monitoring test...${NC}"
+    echo ""
+    
+    # Start background monitoring
+    monitor_services &
+    local monitor_pid=$!
+    
+    # Run the actual load test
+    test_load_distribution "DECK-SERVICE" "/api/v2/decks" "Deck Service Load Distribution"
+    
+    if [ -f /tmp/test_deck_id.txt ]; then
+        local deck_id=$(cat /tmp/test_deck_id.txt)
+        test_load_distribution "CARD-SERVICE" "/api/v2/decks/$deck_id/cards" "Card Service Load Distribution"
+    fi
+    
+    # Stop monitoring
+    kill $monitor_pid 2>/dev/null
+    wait $monitor_pid 2>/dev/null
+}
+
+# Monitor services during test
+monitor_services() {
+    local counter=0
+    while [ $counter -lt 30 ]; do
+        echo -e "${PURPLE}📡 Monitoring services... (${counter}s)${NC}"
+        
+        # Check Eureka status
+        local deck_instances=$(curl -s "$EUREKA_URL/eureka/apps/DECK-SERVICE" 2>/dev/null | grep -o "<instance>" | wc -l)
+        local card_instances=$(curl -s "$EUREKA_URL/eureka/apps/CARD-SERVICE" 2>/dev/null | grep -o "<instance>" | wc -l)
+        
+        echo -e "${PURPLE}   Deck Service: $deck_instances instances${NC}"
+        echo -e "${PURPLE}   Card Service: $card_instances instances${NC}"
+        
+        sleep 5
+        counter=$((counter + 5))
+    done
+}
+
+# Cleanup test data
+cleanup() {
+    echo -e "${YELLOW}🧹 Cleaning up...${NC}"
+    
+    if [ -f /tmp/test_deck_id.txt ]; then
+        local deck_id=$(cat /tmp/test_deck_id.txt)
+        curl -s -X DELETE "$GATEWAY_URL/api/v2/decks/$deck_id" > /dev/null
+        rm -f /tmp/test_deck_id.txt
+    fi
+    
+    rm -f /tmp/load_test_*_results.txt
+    echo -e "${GREEN}✅ Cleanup completed${NC}"
+}
+
 # Handle script interruption
-trap 'echo -e "\n${RED}🛑 Test interrupted. Cleaning up...${NC}"; cleanup_test_data; exit 1' INT TERM
+trap 'echo -e "\n${RED}🛑 Test interrupted. Cleaning up...${NC}"; cleanup; exit 1' INT TERM
 
-# Export functions for parallel execution
-export -f perform_request
+# Main execution
+main() {
+    check_services
+    
+    # Check service instances
+    get_service_instances "DECK-SERVICE"
+    local deck_instances=$?
+    
+    get_service_instances "CARD-SERVICE"  
+    local card_instances=$?
+    
+    if [ $deck_instances -eq 0 ] || [ $card_instances -eq 0 ]; then
+        echo -e "${RED}❌ Insufficient service instances for load balancing test${NC}"
+        echo -e "${YELLOW}💡 Start multiple instances with: ./start.sh${NC}"
+        exit 1
+    fi
+    
+    create_test_deck
+    test_with_monitoring
+    cleanup
+    
+    echo -e "${GREEN}🎉 Load distribution test completed!${NC}"
+    echo ""
+    echo -e "${YELLOW}💡 Analysis Summary:${NC}"
+    echo -e "${CYAN}   - Check port distribution to verify load balancing${NC}"
+    echo -e "${CYAN}   - Monitor response times for performance impact${NC}"
+    echo -e "${CYAN}   - Verify all service instances received requests${NC}"
+    echo -e "${CYAN}   - Use Eureka dashboard: http://localhost:8761${NC}"
+    echo -e "${CYAN}   - Use Zipkin tracing: http://localhost:9411${NC}"
+}
 
-# Run main function
+# Run the test
 main
