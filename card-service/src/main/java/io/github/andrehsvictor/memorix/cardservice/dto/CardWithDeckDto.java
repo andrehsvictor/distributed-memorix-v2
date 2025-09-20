@@ -13,7 +13,6 @@ public class CardWithDeckDto {
     private UUID id;
     private String question;
     private String answer;
-    private DeckDto deck;
     private Instant createdAt;
     private Instant updatedAt;
     
