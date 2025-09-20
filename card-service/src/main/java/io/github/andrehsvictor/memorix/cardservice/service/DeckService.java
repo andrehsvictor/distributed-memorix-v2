@@ -21,6 +21,10 @@ public interface DeckService {
     ResponseEntity<Void> checkIfExists(@PathVariable UUID id);
 
     default boolean existsById(UUID id) {
-        return checkIfExists(id).getStatusCode().is2xxSuccessful();
+        try {
+            return checkIfExists(id).getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
