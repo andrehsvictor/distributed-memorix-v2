@@ -46,6 +46,7 @@ public class CardService {
     public CardWithDeckDto create(UUID deckId, PostCardDto postCardDto) {
         deckExistsById(deckId);
         Card card = cardMapper.postCardDtoToCard(postCardDto);
+        card.setDeckId(deckId);
         Card savedCard = cardRepository.save(card);
         cardEventPublisher.publishCardCreatedEvent(savedCard.getId().toString(), deckId.toString());
         return cardMapper.cardToCardWithDeckDto(savedCard);
